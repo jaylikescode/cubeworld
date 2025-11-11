@@ -4,6 +4,7 @@ import {
   BlockType,
   BLOCK_TYPES,
   BlockData,
+  BlockCategory,
   VoxelPosition,
   Chunk,
   WorldSettings
@@ -12,17 +13,15 @@ import {
 describe('VoxelTypes', () => {
   describe('BlockType enum', () => {
     it('should have correct numeric values', () => {
+      // Verify key blocks have their expected values
       expect(BlockType.AIR).toBe(0);
-      expect(BlockType.GRASS).toBe(1);
-      expect(BlockType.DIRT).toBe(2);
-      expect(BlockType.STONE).toBe(3);
-      expect(BlockType.SAND).toBe(4);
-      expect(BlockType.WATER).toBe(5);
-      expect(BlockType.WOOD).toBe(6);
-      expect(BlockType.LEAVES).toBe(7);
-      expect(BlockType.SNOW).toBe(8);
-      expect(BlockType.COBBLESTONE).toBe(9);
-      expect(BlockType.BEDROCK).toBe(10);
+      expect(BlockType.WATER).toBe(1);
+      expect(BlockType.LAVA).toBe(2);
+      expect(BlockType.GRASS).toBe(3);
+      expect(BlockType.DIRT).toBe(4);
+      expect(BlockType.STONE).toBe(5);
+      expect(BlockType.BEDROCK).toBe(11);
+      expect(BlockType.COBBLESTONE).toBe(50);
     });
 
     it('should have unique values for each block type', () => {
@@ -31,12 +30,21 @@ describe('VoxelTypes', () => {
       expect(uniqueValues.size).toBe(values.length);
     });
 
-    it('should have all block types from 0 to 10', () => {
+    it('should have at least 50 block types', () => {
+      const numericValues = Object.values(BlockType)
+        .filter(v => typeof v === 'number');
+
+      expect(numericValues.length).toBeGreaterThanOrEqual(50);
+    });
+
+    it('should have contiguous values starting from 0', () => {
       const numericValues = Object.values(BlockType)
         .filter(v => typeof v === 'number')
         .sort((a, b) => (a as number) - (b as number));
 
-      expect(numericValues).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      numericValues.forEach((value, index) => {
+        expect(value).toBe(index);
+      });
     });
   });
 
@@ -208,11 +216,11 @@ describe('VoxelTypes', () => {
       });
     });
 
-    it('should have exactly 3 transparent blocks', () => {
+    it('should have transparent blocks including air, water, and leaves', () => {
       const transparentBlocks = Object.values(BLOCK_TYPES)
         .filter((block: BlockData) => block.transparent === true);
 
-      expect(transparentBlocks).toHaveLength(3);
+      expect(transparentBlocks.length).toBeGreaterThanOrEqual(3);
       expect(transparentBlocks.map((b: BlockData) => b.type))
         .toEqual(expect.arrayContaining([
           BlockType.AIR,
@@ -410,19 +418,285 @@ describe('VoxelTypes', () => {
       });
     });
 
-    it('should only have transparent flag on expected blocks', () => {
-      const transparentTypes = [BlockType.AIR, BlockType.WATER, BlockType.LEAVES];
+    it('should only have transparent flag on appropriate blocks', () => {
+      Object.values(BLOCK_TYPES).forEach((block: BlockData) => {
+        if (block.transparent === true) {
+          // Transparent blocks should be air, water, lava, glass, leaves, or ice
+          expect([
+            BlockType.AIR,
+            BlockType.WATER,
+            BlockType.LAVA,
+            BlockType.GLASS,
+            BlockType.ICE,
+            BlockType.LEAVES,
+            BlockType.OAK_LEAVES,
+            BlockType.BIRCH_LEAVES,
+            BlockType.SPRUCE_LEAVES,
+            BlockType.DARK_OAK_LEAVES,
+            BlockType.ACACIA_LEAVES
+          ]).toContain(block.type);
+        }
+      });
+    });
+  });
 
-      Object.values(BlockType)
-        .filter(v => typeof v === 'number')
-        .forEach(type => {
-          const blockData = BLOCK_TYPES[type as BlockType];
-          if (transparentTypes.includes(type as BlockType)) {
-            expect(blockData.transparent).toBe(true);
-          } else {
-            expect(blockData.transparent).toBeUndefined();
-          }
-        });
+  describe('BlockCategory enum', () => {
+    it('should have category enum values', () => {
+      expect(BlockCategory.NATURAL).toBeDefined();
+      expect(BlockCategory.BUILDING).toBeDefined();
+      expect(BlockCategory.MINERAL).toBeDefined();
+      expect(BlockCategory.DECORATION).toBeDefined();
+      expect(BlockCategory.LIQUID).toBeDefined();
+    });
+
+    it('should have unique category values', () => {
+      const values = Object.values(BlockCategory).filter(v => typeof v === 'number');
+      const uniqueValues = new Set(values);
+      expect(uniqueValues.size).toBe(values.length);
+    });
+  });
+
+  describe('Block categories', () => {
+    it('should assign category to all blocks', () => {
+      Object.values(BLOCK_TYPES).forEach((block: BlockData) => {
+        expect(block.category).toBeDefined();
+        expect(typeof block.category).toBe('number');
+      });
+    });
+
+    it('should have natural blocks category', () => {
+      const naturalBlocks = Object.values(BLOCK_TYPES)
+        .filter((block: BlockData) => block.category === BlockCategory.NATURAL);
+
+      expect(naturalBlocks.length).toBeGreaterThan(0);
+      expect(naturalBlocks.map((b: BlockData) => b.type))
+        .toEqual(expect.arrayContaining([
+          BlockType.GRASS,
+          BlockType.DIRT,
+          BlockType.STONE,
+          BlockType.SAND
+        ]));
+    });
+
+    it('should have building blocks category', () => {
+      const buildingBlocks = Object.values(BLOCK_TYPES)
+        .filter((block: BlockData) => block.category === BlockCategory.BUILDING);
+
+      expect(buildingBlocks.length).toBeGreaterThan(0);
+      expect(buildingBlocks.map((b: BlockData) => b.type))
+        .toEqual(expect.arrayContaining([
+          BlockType.BRICK,
+          BlockType.PLANK,
+          BlockType.COBBLESTONE
+        ]));
+    });
+
+    it('should have mineral blocks category', () => {
+      const mineralBlocks = Object.values(BLOCK_TYPES)
+        .filter((block: BlockData) => block.category === BlockCategory.MINERAL);
+
+      expect(mineralBlocks.length).toBeGreaterThan(0);
+    });
+
+    it('should have decoration blocks category', () => {
+      const decorationBlocks = Object.values(BLOCK_TYPES)
+        .filter((block: BlockData) => block.category === BlockCategory.DECORATION);
+
+      expect(decorationBlocks.length).toBeGreaterThan(0);
+    });
+
+    it('should have liquid blocks category', () => {
+      const liquidBlocks = Object.values(BLOCK_TYPES)
+        .filter((block: BlockData) => block.category === BlockCategory.LIQUID);
+
+      expect(liquidBlocks.length).toBeGreaterThan(0);
+      expect(liquidBlocks.map((b: BlockData) => b.type))
+        .toEqual(expect.arrayContaining([BlockType.WATER]));
+    });
+  });
+
+  describe('Block metadata', () => {
+    it('should have hardness values for all blocks', () => {
+      Object.values(BLOCK_TYPES).forEach((block: BlockData) => {
+        expect(block.hardness).toBeDefined();
+        expect(typeof block.hardness).toBe('number');
+        expect(block.hardness).toBeGreaterThanOrEqual(0);
+        expect(block.hardness).toBeLessThanOrEqual(100);
+      });
+    });
+
+    it('should have bedrock with maximum hardness', () => {
+      const bedrock = BLOCK_TYPES[BlockType.BEDROCK];
+      expect(bedrock.hardness).toBe(100);
+    });
+
+    it('should have air with zero hardness', () => {
+      const air = BLOCK_TYPES[BlockType.AIR];
+      expect(air.hardness).toBe(0);
+    });
+
+    it('should have appropriate hardness for stone blocks', () => {
+      const stone = BLOCK_TYPES[BlockType.STONE];
+      expect(stone.hardness).toBeGreaterThan(5);
+      expect(stone.hardness).toBeLessThan(100);
+    });
+
+    it('should have tool requirements for hard blocks', () => {
+      const hardBlocks = Object.values(BLOCK_TYPES)
+        .filter((block: BlockData) => block.hardness > 10);
+
+      hardBlocks.forEach((block: BlockData) => {
+        if (block.type !== BlockType.BEDROCK) {
+          expect(block.toolRequired).toBeDefined();
+        }
+      });
+    });
+
+    it('should have drop items defined for mineable blocks', () => {
+      Object.values(BLOCK_TYPES).forEach((block: BlockData) => {
+        if (block.type !== BlockType.AIR && block.hardness < 100) {
+          expect(block.drops).toBeDefined();
+          expect(Array.isArray(block.drops)).toBe(true);
+        }
+      });
+    });
+
+    it('should have bedrock with no drops', () => {
+      const bedrock = BLOCK_TYPES[BlockType.BEDROCK];
+      expect(bedrock.drops).toEqual([]);
+    });
+
+    it('should have some blocks that drop themselves', () => {
+      const selfDropping = Object.values(BLOCK_TYPES)
+        .filter((block: BlockData) =>
+          block.drops?.some(drop => drop.blockType === block.type)
+        );
+
+      expect(selfDropping.length).toBeGreaterThan(0);
+    });
+
+    it('should have some blocks that drop different items', () => {
+      // Like grass dropping dirt, or ores dropping minerals
+      const differentDrops = Object.values(BLOCK_TYPES)
+        .filter((block: BlockData) =>
+          block.drops?.some(drop => drop.blockType !== block.type)
+        );
+
+      expect(differentDrops.length).toBeGreaterThan(0);
+    });
+
+    it('should have valid drop quantities', () => {
+      Object.values(BLOCK_TYPES).forEach((block: BlockData) => {
+        if (block.drops && block.drops.length > 0) {
+          block.drops.forEach(drop => {
+            expect(drop.quantity).toBeGreaterThan(0);
+            expect(drop.quantity).toBeLessThanOrEqual(64);
+          });
+        }
+      });
+    });
+  });
+
+  describe('New block types', () => {
+    describe('Building blocks', () => {
+      it('should have BRICK block', () => {
+        expect(BlockType.BRICK).toBeDefined();
+        const brick = BLOCK_TYPES[BlockType.BRICK];
+        expect(brick.name).toBe('Brick');
+        expect(brick.category).toBe(BlockCategory.BUILDING);
+      });
+
+      it('should have PLANK block', () => {
+        expect(BlockType.PLANK).toBeDefined();
+        const plank = BLOCK_TYPES[BlockType.PLANK];
+        expect(plank.name).toBe('Plank');
+        expect(plank.category).toBe(BlockCategory.BUILDING);
+      });
+
+      it('should have GLASS block', () => {
+        expect(BlockType.GLASS).toBeDefined();
+        const glass = BLOCK_TYPES[BlockType.GLASS];
+        expect(glass.name).toBe('Glass');
+        expect(glass.transparent).toBe(true);
+        expect(glass.category).toBe(BlockCategory.BUILDING);
+      });
+
+      it('should have CONCRETE block', () => {
+        expect(BlockType.CONCRETE).toBeDefined();
+        const concrete = BLOCK_TYPES[BlockType.CONCRETE];
+        expect(concrete.name).toBe('Concrete');
+        expect(concrete.category).toBe(BlockCategory.BUILDING);
+      });
+    });
+
+    describe('Mineral blocks', () => {
+      it('should have COAL_ORE block', () => {
+        expect(BlockType.COAL_ORE).toBeDefined();
+        const coalOre = BLOCK_TYPES[BlockType.COAL_ORE];
+        expect(coalOre.name).toBe('Coal Ore');
+        expect(coalOre.category).toBe(BlockCategory.MINERAL);
+      });
+
+      it('should have IRON_ORE block', () => {
+        expect(BlockType.IRON_ORE).toBeDefined();
+        const ironOre = BLOCK_TYPES[BlockType.IRON_ORE];
+        expect(ironOre.name).toBe('Iron Ore');
+        expect(ironOre.category).toBe(BlockCategory.MINERAL);
+      });
+
+      it('should have GOLD_ORE block', () => {
+        expect(BlockType.GOLD_ORE).toBeDefined();
+        const goldOre = BLOCK_TYPES[BlockType.GOLD_ORE];
+        expect(goldOre.name).toBe('Gold Ore');
+        expect(goldOre.category).toBe(BlockCategory.MINERAL);
+      });
+
+      it('should have DIAMOND_ORE block', () => {
+        expect(BlockType.DIAMOND_ORE).toBeDefined();
+        const diamondOre = BLOCK_TYPES[BlockType.DIAMOND_ORE];
+        expect(diamondOre.name).toBe('Diamond Ore');
+        expect(diamondOre.category).toBe(BlockCategory.MINERAL);
+      });
+    });
+
+    describe('Natural blocks', () => {
+      it('should have GRAVEL block', () => {
+        expect(BlockType.GRAVEL).toBeDefined();
+        const gravel = BLOCK_TYPES[BlockType.GRAVEL];
+        expect(gravel.name).toBe('Gravel');
+        expect(gravel.category).toBe(BlockCategory.NATURAL);
+      });
+
+      it('should have CLAY block', () => {
+        expect(BlockType.CLAY).toBeDefined();
+        const clay = BLOCK_TYPES[BlockType.CLAY];
+        expect(clay.name).toBe('Clay');
+        expect(clay.category).toBe(BlockCategory.NATURAL);
+      });
+
+      it('should have ICE block', () => {
+        expect(BlockType.ICE).toBeDefined();
+        const ice = BLOCK_TYPES[BlockType.ICE];
+        expect(ice.name).toBe('Ice');
+        expect(ice.transparent).toBe(true);
+        expect(ice.category).toBe(BlockCategory.NATURAL);
+      });
+    });
+
+    describe('Decoration blocks', () => {
+      it('should have FLOWER block', () => {
+        expect(BlockType.FLOWER).toBeDefined();
+        const flower = BLOCK_TYPES[BlockType.FLOWER];
+        expect(flower.name).toBe('Flower');
+        expect(flower.category).toBe(BlockCategory.DECORATION);
+      });
+
+      it('should have MUSHROOM block', () => {
+        expect(BlockType.MUSHROOM).toBeDefined();
+        const mushroom = BLOCK_TYPES[BlockType.MUSHROOM];
+        expect(mushroom.name).toBe('Mushroom');
+        expect(mushroom.category).toBe(BlockCategory.DECORATION);
+      });
     });
   });
 });
