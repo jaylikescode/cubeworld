@@ -9,8 +9,9 @@ export class VoxelWorld {
   private noiseGenerator: NoiseGenerator;
   private blockGeometry: THREE.BoxGeometry;
   private scene: THREE.Scene;
+  private seed: number; // ✨ NEW: Store seed for serialization
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, seed?: number) { // ✨ MODIFIED: Optional seed parameter
     this.scene = scene;
     this.chunks = new Map();
     this.worldSettings = {
@@ -20,7 +21,9 @@ export class VoxelWorld {
       seaLevel: WORLD_CONSTANTS.SEA_LEVEL,
     };
 
-    this.noiseGenerator = new NoiseGenerator(Math.random());
+    // ✨ MODIFIED: Use provided seed or generate random
+    this.seed = seed ?? Math.random();
+    this.noiseGenerator = new NoiseGenerator(this.seed);
     this.blockGeometry = new THREE.BoxGeometry(1, 1, 1);
 
     this.generateWorld();
@@ -385,6 +388,63 @@ export class VoxelWorld {
     });
     this.chunks.clear();
     this.blockGeometry.dispose();
+  }
+
+  // ✨ NEW: Getter methods for serialization
+  /**
+   * Get the world generation seed
+   * @returns The seed number used for world generation
+   */
+  public getSeed(): number {
+    return this.seed;
+  }
+
+  /**
+   * Get all chunks in the world
+   * @returns Map of chunk keys to Chunk objects
+   */
+  public getChunks(): Map<string, Chunk> {
+    return this.chunks;
+  }
+
+  // ✨ NEW: Load world from deserialized data
+  /**
+   * Load world from deserialized data
+   * Clears existing chunks and rebuilds from saved data
+   *
+   * @param data - WorldData from deserializer
+   */
+  public loadFromData(data: import('../types/SerializationTypes').WorldData): void {
+    // Clear existing chunks
+    this.chunks.forEach(chunk => {
+      if (chunk.mesh) {
+        this.scene.remove(chunk.mesh);
+        chunk.mesh.geometry.dispose();
+        if (Array.isArray(chunk.mesh.material)) {
+          chunk.mesh.material.forEach(m => m.dispose());
+        } else {
+          chunk.mesh.material.dispose();
+        }
+      }
+    });
+    this.chunks.clear();
+
+    // Set seed from loaded data
+    this.seed = data.seed;
+    this.noiseGenerator = new NoiseGenerator(this.seed);
+
+    // Load chunks
+    data.chunks.forEach((chunkData, key) => {
+      const chunk: Chunk = {
+        x: chunkData.x,
+        z: chunkData.z,
+        blocks: chunkData.blocks,
+        mesh: null
+      };
+
+      this.chunks.set(key, chunk);
+      this.buildChunkMesh(chunk);
+    });
   }
 }
 
