@@ -5,6 +5,8 @@ import { DeviceDetector } from '../utils/DeviceDetector';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileBlockSheet } from './MobileBlockSheet';
 import { MobileDrawer } from './MobileDrawer';
+import { WorldSerializer } from '../services/WorldSerializer';
+import { LocalStorageManager } from '../services/LocalStorageManager';
 
 /**
  * Block icon mapping for UI display
@@ -107,11 +109,15 @@ export class VoxelUIManager {
   private mobileBottomNav?: MobileBottomNav;
   private mobileBlockSheet?: MobileBlockSheet;
   private mobileDrawer?: MobileDrawer;
+  private serializer: WorldSerializer;
+  private storage: LocalStorageManager;
 
   constructor(gameEngine: VoxelGameEngine) {
     this.gameEngine = gameEngine;
     this.categoryManager = new BlockCategoryManager();
     this.deviceDetector = new DeviceDetector();
+    this.serializer = new WorldSerializer();
+    this.storage = new LocalStorageManager();
 
     this.loadingElement = document.getElementById('loading')!;
     this.hideLoading();
@@ -162,6 +168,7 @@ export class VoxelUIManager {
   private renderDesktopUI(): void {
     this.setupToolButtons();
     this.setupWeatherButtons();
+    this.setupWorldManagementButtons();
     this.renderCategoryTabs();
     this.renderBlockGrid();
     this.setupSearchInput();
@@ -535,6 +542,177 @@ export class VoxelUIManager {
       regenerate: 'Regenerate',
     };
     return names[tool] || tool;
+  }
+
+  /**
+   * Setup world management buttons (save/load/clear/new)
+   */
+  private setupWorldManagementButtons(): void {
+    const saveButton = document.getElementById('save-world');
+    const loadButton = document.getElementById('load-world');
+    const newButton = document.getElementById('new-world');
+    const clearButton = document.getElementById('clear-world');
+
+    if (saveButton) {
+      saveButton.addEventListener('click', () => {
+        this.handleSaveWorld();
+      });
+    }
+
+    if (loadButton) {
+      loadButton.addEventListener('click', () => {
+        this.handleLoadWorld();
+      });
+    }
+
+    if (newButton) {
+      newButton.addEventListener('click', () => {
+        this.handleNewWorld();
+      });
+    }
+
+    if (clearButton) {
+      clearButton.addEventListener('click', () => {
+        this.handleClearWorld();
+      });
+    }
+  }
+
+  /**
+   * Handle Save World button click
+   */
+  private handleSaveWorld(): void {
+    try {
+      const world = this.gameEngine.getWorld();
+      const serialized = this.serializer.serialize(world);
+      const success = this.storage.saveWorld(serialized);
+
+      if (success) {
+        this.showToast('success', '💾 World saved successfully!');
+      } else {
+        this.showToast('error', '❌ Failed to save world. Storage quota may be exceeded.');
+      }
+    } catch (error) {
+      console.error('Save world error:', error);
+      this.showToast('error', '❌ Error saving world.');
+    }
+  }
+
+  /**
+   * Handle Load World button click
+   */
+  private handleLoadWorld(): void {
+    try {
+      if (!this.storage.hasWorld()) {
+        this.showToast('info', 'ℹ️ No saved world found.');
+        return;
+      }
+
+      const loaded = this.storage.loadWorld();
+      if (!loaded) {
+        this.showToast('error', '❌ Failed to load world. Save data may be corrupted.');
+        return;
+      }
+
+      const worldData = this.serializer.deserialize(loaded);
+      const world = this.gameEngine.getWorld();
+      world.loadFromData(worldData);
+
+      this.showToast('success', '📂 World loaded successfully!');
+    } catch (error) {
+      console.error('Load world error:', error);
+      this.showToast('error', '❌ Error loading world.');
+    }
+  }
+
+  /**
+   * Handle New World button click
+   */
+  private handleNewWorld(): void {
+    const confirmed = confirm('Create a new world? This will replace the current world (unsaved changes will be lost).');
+    if (!confirmed) return;
+
+    try {
+      this.gameEngine.regenerateWorld();
+      this.showToast('success', '🆕 New world created!');
+    } catch (error) {
+      console.error('New world error:', error);
+      this.showToast('error', '❌ Error creating new world.');
+    }
+  }
+
+  /**
+   * Handle Clear Save button click
+   */
+  private handleClearWorld(): void {
+    const confirmed = confirm('Clear saved world data? This action cannot be undone.');
+    if (!confirmed) return;
+
+    try {
+      this.storage.clearWorld();
+      this.showToast('success', '🗑️ Saved world data cleared.');
+    } catch (error) {
+      console.error('Clear world error:', error);
+      this.showToast('error', '❌ Error clearing save data.');
+    }
+  }
+
+  /**
+   * Show toast notification
+   * @param type - Toast type (success, error, info)
+   * @param message - Message to display
+   */
+  private showToast(type: 'success' | 'error' | 'info', message: string): void {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    const icon = document.createElement('div');
+    icon.className = 'toast-icon';
+    icon.textContent = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+
+    const messageEl = document.createElement('div');
+    messageEl.className = 'toast-message';
+    messageEl.textContent = message;
+
+    toast.appendChild(icon);
+    toast.appendChild(messageEl);
+    container.appendChild(toast);
+
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
+  }
+
+  /**
+   * Try to auto-load saved world on initialization
+   */
+  public tryAutoLoad(): void {
+    try {
+      if (!this.storage.hasWorld()) {
+        console.log('No saved world found. Starting fresh.');
+        return;
+      }
+
+      const loaded = this.storage.loadWorld();
+      if (!loaded) {
+        console.warn('Failed to load saved world. Starting fresh.');
+        return;
+      }
+
+      const worldData = this.serializer.deserialize(loaded);
+      const world = this.gameEngine.getWorld();
+      world.loadFromData(worldData);
+
+      console.log('Auto-loaded saved world successfully.');
+      this.showToast('info', '📂 Loaded saved world.');
+    } catch (error) {
+      console.error('Auto-load error:', error);
+      // Don't show error toast for auto-load failures (silent failure)
+    }
   }
 
   /**

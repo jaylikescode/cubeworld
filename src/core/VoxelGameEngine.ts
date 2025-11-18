@@ -180,6 +180,10 @@ export class VoxelGameEngine {
     return { ...this.gameState };
   }
 
+  public getWorld(): VoxelWorld {
+    return this.voxelWorld;
+  }
+
   public onGameStateChange(callback: (state: VoxelGameState) => void): void {
     this.onStateChange = callback;
   }

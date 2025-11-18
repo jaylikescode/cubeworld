@@ -88,7 +88,7 @@ export class WorldSerializer {
     const chunks = world.getChunks();
     const serializedChunks: SerializedChunk[] = [];
 
-    chunks.forEach((chunk: Chunk, key: string) => {
+    chunks.forEach((chunk: Chunk) => {
       serializedChunks.push({
         x: chunk.x,
         z: chunk.z,

@@ -32,6 +32,9 @@ function init(): void {
   const uiManager = new VoxelUIManager(gameEngine);
   console.log('✅ UI manager initialized');
 
+  // Try to auto-load saved world
+  uiManager.tryAutoLoad();
+
   // Welcome message
   console.log(`
 ╔═══════════════════════════════════════╗
