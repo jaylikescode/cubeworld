@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, BLOCK_TYPES } from '../types/VoxelTypes';
+import { BlockType, BLOCK_TYPES, BlockFace } from '../types/VoxelTypes';
 import { TEXTURE_CONSTANTS } from '../constants/GraphicsConstants';
 
 export interface TextureCoordinates {
@@ -8,8 +8,6 @@ export interface TextureCoordinates {
   width: number;  // Width in UV space
   height: number; // Height in UV space
 }
-
-export type BlockFace = 'top' | 'bottom' | 'side' | 'front' | 'back' | 'left' | 'right';
 
 interface BlockTextureMapping {
   top?: number;    // Tile index for top face
@@ -154,31 +152,34 @@ export class TextureAtlas {
     return this.tilesPerRow;
   }
 
-  public getTextureCoordinates(blockType: BlockType, face: BlockFace = 'side'): TextureCoordinates {
+  /**
+   * Get the tile index for a specific block face
+   */
+  public getTileIndex(blockType: BlockType, face: BlockFace = BlockFace.SIDE): number {
     const mapping = this.textureMap.get(blockType);
 
-    // Determine which tile index to use
-    let tileIndex: number;
     if (mapping) {
       if (mapping.all !== undefined) {
-        tileIndex = mapping.all;
+        return mapping.all;
       } else {
         // Handle face-specific textures
         switch (face) {
-          case 'top':
-            tileIndex = mapping.top ?? mapping.side ?? blockType;
-            break;
-          case 'bottom':
-            tileIndex = mapping.bottom ?? mapping.side ?? blockType;
-            break;
+          case BlockFace.TOP:
+            return mapping.top ?? mapping.side ?? blockType;
+          case BlockFace.BOTTOM:
+            return mapping.bottom ?? mapping.side ?? blockType;
           default: // side, front, back, left, right
-            tileIndex = mapping.side ?? blockType;
+            return mapping.side ?? blockType;
         }
       }
-    } else {
-      // Default: use block type as tile index
-      tileIndex = blockType;
     }
+    
+    // Default: use block type as tile index
+    return blockType;
+  }
+
+  public getTextureCoordinates(blockType: BlockType, face: BlockFace = BlockFace.SIDE): TextureCoordinates {
+    const tileIndex = this.getTileIndex(blockType, face);
 
     // Calculate UV coordinates
     const row = Math.floor(tileIndex / this.tilesPerRow);

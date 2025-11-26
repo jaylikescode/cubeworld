@@ -16,6 +16,16 @@ export enum ToolType {
   SWORD = 4,
 }
 
+export enum BlockFace {
+  TOP = 'top',
+  BOTTOM = 'bottom',
+  LEFT = 'left',
+  RIGHT = 'right',
+  FRONT = 'front',
+  BACK = 'back',
+  SIDE = 'side',
+}
+
 export interface BlockDrop {
   blockType: BlockType;
   quantity: number;
@@ -769,7 +779,7 @@ export interface Chunk {
   x: number;
   z: number;
   blocks: Uint8Array; // Flat array of block types
-  mesh: THREE.InstancedMesh | null;
+  mesh: THREE.Mesh | THREE.InstancedMesh | null;
 }
 
 export interface WorldSettings {
@@ -792,4 +802,3 @@ export interface VoxelGameState {
   fps: number;
   blockCount: number;
 }
-

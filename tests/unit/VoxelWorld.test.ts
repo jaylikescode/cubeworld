@@ -1,7 +1,39 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as THREE from 'three';
 import { VoxelWorld } from '../../src/core/VoxelWorld';
 import { BlockType } from '../../src/types/VoxelTypes';
+
+// Mock graphics dependencies to avoid canvas/WebGL issues in unit tests
+vi.mock('../../src/graphics/TextureAtlas', () => {
+  return {
+    TextureAtlas: class {
+      generateTexture() { return new THREE.Texture(); }
+      getTileIndex() { return 0; }
+      getTilesPerRow() { return 16; }
+      dispose() {}
+    }
+  };
+});
+
+vi.mock('../../src/graphics/GreedyMesher', () => {
+  return {
+    GreedyMesher: class {
+      constructor() {}
+      buildMesh() {
+        const geometry = new THREE.BufferGeometry();
+        // Add dummy attributes so VoxelWorld doesn't think it's empty
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute([0,0,0, 1,0,0, 0,1,0], 3));
+        return geometry;
+      }
+    }
+  };
+});
+
+vi.mock('../../src/graphics/VoxelMaterial', () => {
+  return {
+    createVoxelMaterial: () => new THREE.MeshBasicMaterial()
+  };
+});
 
 describe('VoxelWorld', () => {
   let scene: THREE.Scene;
@@ -16,6 +48,7 @@ describe('VoxelWorld', () => {
     // Clean up to prevent memory leaks
     world.dispose();
     scene.clear();
+    vi.clearAllMocks();
   });
 
   describe('constructor', () => {
@@ -26,8 +59,8 @@ describe('VoxelWorld', () => {
 
     it('should add chunks to the scene', () => {
       // With default renderDistance of 3, should have 7x7 = 49 chunks
-      // Filter for InstancedMesh objects
-      const meshes = scene.children.filter(child => child instanceof THREE.InstancedMesh);
+      // Filter for Mesh objects (VoxelWorld now uses standard Mesh with Greedy Meshing)
+      const meshes = scene.children.filter(child => child instanceof THREE.Mesh);
 
       // Should have multiple chunks rendered
       expect(meshes.length).toBeGreaterThan(0);

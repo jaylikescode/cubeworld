@@ -2,16 +2,24 @@ import * as THREE from 'three';
 import { BlockType, BLOCK_TYPES, Chunk, WorldSettings } from '../types/VoxelTypes';
 import { NoiseGenerator } from '../utils/NoiseGenerator';
 import { WORLD_CONSTANTS } from '../constants/WorldConstants';
+import { GreedyMesher } from '../graphics/GreedyMesher';
+import { TextureAtlas } from '../graphics/TextureAtlas';
+import { createVoxelMaterial } from '../graphics/VoxelMaterial';
 
 export class VoxelWorld {
   private chunks: Map<string, Chunk>;
   private worldSettings: WorldSettings;
   private noiseGenerator: NoiseGenerator;
-  private blockGeometry: THREE.BoxGeometry;
+  // private blockGeometry: THREE.BoxGeometry; // No longer needed for Greedy Meshing
   private scene: THREE.Scene;
-  private seed: number; // ✨ NEW: Store seed for serialization
+  private seed: number;
+  
+  // ✨ NEW: Graphics systems
+  private textureAtlas: TextureAtlas;
+  private greedyMesher: GreedyMesher;
+  private voxelMaterial: THREE.MeshLambertMaterial;
 
-  constructor(scene: THREE.Scene, seed?: number) { // ✨ MODIFIED: Optional seed parameter
+  constructor(scene: THREE.Scene, seed?: number) {
     this.scene = scene;
     this.chunks = new Map();
     this.worldSettings = {
@@ -21,10 +29,14 @@ export class VoxelWorld {
       seaLevel: WORLD_CONSTANTS.SEA_LEVEL,
     };
 
-    // ✨ MODIFIED: Use provided seed or generate random
     this.seed = seed ?? Math.random();
     this.noiseGenerator = new NoiseGenerator(this.seed);
-    this.blockGeometry = new THREE.BoxGeometry(1, 1, 1);
+    // this.blockGeometry = new THREE.BoxGeometry(1, 1, 1);
+
+    // Initialize graphics systems
+    this.textureAtlas = new TextureAtlas();
+    this.greedyMesher = new GreedyMesher(this.textureAtlas);
+    this.voxelMaterial = createVoxelMaterial(this.textureAtlas);
 
     this.generateWorld();
   }
@@ -184,114 +196,36 @@ export class VoxelWorld {
   }
 
   private buildChunkMesh(chunk: Chunk): void {
-    const { chunkSize, chunkHeight } = this.worldSettings;
-    const blocks = chunk.blocks;
-    
-    // Count visible blocks for instancing
-    const visibleBlocks: Array<{ x: number; y: number; z: number; type: BlockType }> = [];
-    
-    for (let x = 0; x < chunkSize; x++) {
-      for (let y = 0; y < chunkHeight; y++) {
-        for (let z = 0; z < chunkSize; z++) {
-          const index = this.getBlockIndex(x, y, z);
-          const blockType = blocks[index];
-          
-          if (blockType !== BlockType.AIR && this.isBlockVisible(blocks, x, y, z)) {
-            visibleBlocks.push({ x, y, z, type: blockType });
-          }
-        }
-      }
-    }
-    
-    if (visibleBlocks.length === 0) return;
-    
-    // Create instanced mesh
-    // Note: Don't use vertexColors for InstancedMesh - it uses instanceColor automatically
-    const material = new THREE.MeshLambertMaterial();
-    const instancedMesh = new THREE.InstancedMesh(
-      this.blockGeometry,
-      material,
-      visibleBlocks.length
-    );
-    
-    // Enable per-instance coloring
-    instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
-      new Float32Array(visibleBlocks.length * 3),
-      3
-    );
-    
-    const matrix = new THREE.Matrix4();
-    const color = new THREE.Color();
-    
-    visibleBlocks.forEach((block, i) => {
-      const worldX = chunk.x * chunkSize + block.x;
-      const worldY = block.y;
-      const worldZ = chunk.z * chunkSize + block.z;
-      
-      matrix.setPosition(worldX, worldY, worldZ);
-      instancedMesh.setMatrixAt(i, matrix);
-      
-      const blockData = BLOCK_TYPES[block.type as BlockType];
-      color.copy(blockData.color);
-      instancedMesh.setColorAt(i, color);
-    });
-    
-    instancedMesh.instanceMatrix.needsUpdate = true;
-    instancedMesh.instanceColor.needsUpdate = true;
-    
-    instancedMesh.castShadow = true;
-    instancedMesh.receiveShadow = true;
-    
     // Remove old mesh if exists
     if (chunk.mesh) {
       this.scene.remove(chunk.mesh);
       chunk.mesh.geometry.dispose();
-      if (Array.isArray(chunk.mesh.material)) {
-        chunk.mesh.material.forEach(m => m.dispose());
-      } else {
-        chunk.mesh.material.dispose();
-      }
+      // Material is reused, so don't dispose it unless we want to recreate it
+      // But chunk.mesh.material refers to this.voxelMaterial (shared).
+      // However, if we assigned an array of materials or something else, check.
+      // Here we use shared material.
     }
+
+    // Generate geometry using Greedy Mesher
+    const geometry = this.greedyMesher.buildMesh(chunk);
     
-    chunk.mesh = instancedMesh;
-    this.scene.add(instancedMesh);
+    // If geometry is empty (e.g. chunk full of air or completely surrounded), skip
+    if (geometry.attributes.position.count === 0) {
+      chunk.mesh = null;
+      geometry.dispose();
+      return;
+    }
+
+    // Create mesh
+    const mesh = new THREE.Mesh(geometry, this.voxelMaterial);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
+    chunk.mesh = mesh;
+    this.scene.add(mesh);
   }
 
-  private isBlockVisible(blocks: Uint8Array, x: number, y: number, z: number): boolean {
-    const { chunkSize, chunkHeight } = this.worldSettings;
-    
-    // Check if any neighbor is air or transparent
-    const neighbors = [
-      { dx: 1, dy: 0, dz: 0 },
-      { dx: -1, dy: 0, dz: 0 },
-      { dx: 0, dy: 1, dz: 0 },
-      { dx: 0, dy: -1, dz: 0 },
-      { dx: 0, dy: 0, dz: 1 },
-      { dx: 0, dy: 0, dz: -1 },
-    ];
-    
-    for (const { dx, dy, dz } of neighbors) {
-      const nx = x + dx;
-      const ny = y + dy;
-      const nz = z + dz;
-      
-      // Out of bounds means visible
-      if (nx < 0 || nx >= chunkSize || ny < 0 || ny >= chunkHeight || nz < 0 || nz >= chunkSize) {
-        return true;
-      }
-      
-      const neighborIndex = this.getBlockIndex(nx, ny, nz);
-      const neighborType = blocks[neighborIndex] as BlockType;
-      
-      // If neighbor is air or transparent, this block is visible
-      if (neighborType === BlockType.AIR || BLOCK_TYPES[neighborType]?.transparent) {
-        return true;
-      }
-    }
-    
-    return false;
-  }
-
+  // Helper for setting blocks (and rebuilding mesh)
   public getBlock(worldX: number, worldY: number, worldZ: number): BlockType {
     const { chunkSize, chunkHeight } = this.worldSettings;
     const chunkX = Math.floor(worldX / chunkSize);
@@ -327,6 +261,7 @@ export class VoxelWorld {
     this.buildChunkMesh(chunk);
     
     // Also rebuild neighboring chunks if on edge
+    // This is needed because greedy meshing (and culling) depends on neighbor blocks
     if (localX === 0) this.rebuildChunk(chunkX - 1, chunkZ);
     if (localX === chunkSize - 1) this.rebuildChunk(chunkX + 1, chunkZ);
     if (localZ === 0) this.rebuildChunk(chunkX, chunkZ - 1);
@@ -358,17 +293,13 @@ export class VoxelWorld {
       if (chunk.mesh) {
         this.scene.remove(chunk.mesh);
         chunk.mesh.geometry.dispose();
-        if (Array.isArray(chunk.mesh.material)) {
-          chunk.mesh.material.forEach(m => m.dispose());
-        } else {
-          chunk.mesh.material.dispose();
-        }
       }
     });
     this.chunks.clear();
     
     // Generate new seed
-    this.noiseGenerator = new NoiseGenerator(Math.random());
+    this.seed = Math.random();
+    this.noiseGenerator = new NoiseGenerator(this.seed);
     
     // Regenerate world
     this.generateWorld();
@@ -379,52 +310,29 @@ export class VoxelWorld {
       if (chunk.mesh) {
         this.scene.remove(chunk.mesh);
         chunk.mesh.geometry.dispose();
-        if (Array.isArray(chunk.mesh.material)) {
-          chunk.mesh.material.forEach(m => m.dispose());
-        } else {
-          chunk.mesh.material.dispose();
-        }
       }
     });
     this.chunks.clear();
-    this.blockGeometry.dispose();
+    // this.blockGeometry.dispose();
+    
+    this.textureAtlas.dispose();
+    this.voxelMaterial.dispose();
   }
 
-  // ✨ NEW: Getter methods for serialization
-  /**
-   * Get the world generation seed
-   * @returns The seed number used for world generation
-   */
   public getSeed(): number {
     return this.seed;
   }
 
-  /**
-   * Get all chunks in the world
-   * @returns Map of chunk keys to Chunk objects
-   */
   public getChunks(): Map<string, Chunk> {
     return this.chunks;
   }
 
-  // ✨ NEW: Load world from deserialized data
-  /**
-   * Load world from deserialized data
-   * Clears existing chunks and rebuilds from saved data
-   *
-   * @param data - WorldData from deserializer
-   */
   public loadFromData(data: import('../types/SerializationTypes').WorldData): void {
     // Clear existing chunks
     this.chunks.forEach(chunk => {
       if (chunk.mesh) {
         this.scene.remove(chunk.mesh);
         chunk.mesh.geometry.dispose();
-        if (Array.isArray(chunk.mesh.material)) {
-          chunk.mesh.material.forEach(m => m.dispose());
-        } else {
-          chunk.mesh.material.dispose();
-        }
       }
     });
     this.chunks.clear();
@@ -447,4 +355,3 @@ export class VoxelWorld {
     });
   }
 }
-
