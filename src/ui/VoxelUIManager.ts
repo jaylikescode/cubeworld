@@ -2,9 +2,11 @@ import { VoxelGameEngine } from '../core/VoxelGameEngine';
 import { VoxelGameState, BlockType, ToolMode, BLOCK_TYPES } from '../types/VoxelTypes';
 import { BlockCategoryManager } from './BlockCategoryManager';
 import { DeviceDetector } from '../utils/DeviceDetector';
+import { OrientationManager, type Orientation } from '../utils/OrientationManager';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileBlockSheet } from './MobileBlockSheet';
 import { MobileDrawer } from './MobileDrawer';
+import { MobileInfoBar } from './MobileInfoBar';
 import { WorldSerializer } from '../services/WorldSerializer';
 import { LocalStorageManager } from '../services/LocalStorageManager';
 
@@ -104,11 +106,13 @@ export class VoxelUIManager {
   private loadingElement: HTMLElement;
   private categoryManager: BlockCategoryManager;
   private deviceDetector: DeviceDetector;
+  private orientationManager?: OrientationManager;
   private isCompactMode: boolean = false;
   private currentSearchQuery: string = '';
   private mobileBottomNav?: MobileBottomNav;
   private mobileBlockSheet?: MobileBlockSheet;
   private mobileDrawer?: MobileDrawer;
+  private mobileInfoBar?: MobileInfoBar;
   private serializer: WorldSerializer;
   private storage: LocalStorageManager;
 
@@ -193,6 +197,19 @@ export class VoxelUIManager {
       controlsHelp.classList.add('hidden');
     }
 
+    // Initialize OrientationManager
+    this.orientationManager = new OrientationManager(this.deviceDetector);
+    
+    // Subscribe to orientation changes
+    this.orientationManager.onOrientationChange((orientation: Orientation) => {
+      this.handleOrientationChange(orientation);
+    });
+
+    // Log initial orientation info (for debugging)
+    if (process.env.NODE_ENV === 'development') {
+      this.orientationManager.logOrientationInfo();
+    }
+
     // Create mobile bottom navigation
     const uiOverlay = document.getElementById('ui-overlay');
     if (uiOverlay) {
@@ -243,10 +260,45 @@ export class VoxelUIManager {
           this.mobileBlockSheet.renderBlocks(blocks);
         }
       });
+
+      // Create mobile info bar
+      this.mobileInfoBar = new MobileInfoBar(uiOverlay);
     }
 
     // Still need to update UI with game state
     this.updateUI(this.gameEngine.getGameState());
+  }
+
+  /**
+   * Handle orientation change events
+   */
+  private handleOrientationChange(orientation: Orientation): void {
+    console.log(`📱 Orientation changed to: ${orientation}`);
+
+    // Get layout config for new orientation
+    const layoutConfig = this.orientationManager?.getLayoutConfig();
+
+    // Update all mobile UI components
+    if (this.mobileBottomNav) {
+      this.mobileBottomNav.setOrientation(orientation);
+    }
+
+    if (this.mobileBlockSheet) {
+      this.mobileBlockSheet.setOrientation(orientation);
+    }
+
+    if (this.mobileInfoBar) {
+      // Auto-expand in landscape if configured
+      const autoExpand = layoutConfig?.infoBarAutoExpand ?? false;
+      this.mobileInfoBar.setOrientation(orientation, autoExpand);
+    }
+
+    if (this.mobileDrawer) {
+      this.mobileDrawer.setOrientation(orientation);
+    }
+
+    // Trigger canvas resize to adjust aspect ratio
+    this.gameEngine.handleResize();
   }
 
   private hideLoading(): void {
@@ -531,6 +583,26 @@ export class VoxelUIManager {
 
     // Update active block button
     this.updateActiveBlockButton();
+
+    // Update mobile info bar
+    if (this.mobileInfoBar) {
+      this.mobileInfoBar.updateFPS(state.fps);
+      this.mobileInfoBar.updateBlockCount(state.blockCount);
+      this.mobileInfoBar.updateCurrentTool(this.formatToolName(state.currentTool));
+      
+      const blockData = BLOCK_TYPES[state.currentBlock];
+      this.mobileInfoBar.updateCurrentBlock(blockData.name);
+      
+      if (state.selectedPosition) {
+        this.mobileInfoBar.updateCursorPosition(
+          state.selectedPosition.x, 
+          state.selectedPosition.y, 
+          state.selectedPosition.z
+        );
+      } else {
+        this.mobileInfoBar.updateCursorPosition(null, null, null);
+      }
+    }
   }
 
   private formatToolName(tool: ToolMode): string {

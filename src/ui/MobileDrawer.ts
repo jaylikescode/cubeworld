@@ -1,9 +1,11 @@
 import { BlockCategory } from '../types/VoxelTypes';
 import { BlockCategoryManager } from './BlockCategoryManager';
+import type { Orientation } from '../utils/OrientationManager';
 
 /**
  * MobileDrawer - Side drawer menu for mobile devices
  * Slides in from the right to show categories and settings
+ * Supports both portrait and landscape orientations
  */
 export class MobileDrawer {
   private container: HTMLElement;
@@ -11,6 +13,7 @@ export class MobileDrawer {
   private overlayElement: HTMLElement;
   private isOpenState: boolean = false;
   private activeCategory: number = BlockCategory.NATURAL;
+  private currentOrientation: Orientation = 'portrait';
   private categoryChangeCallbacks: ((category: number) => void)[] = [];
   private categoryManager: BlockCategoryManager;
 
@@ -24,6 +27,9 @@ export class MobileDrawer {
     this.container.appendChild(this.drawerElement);
 
     this.renderCategories();
+    
+    // Initialize layout based on initial orientation
+    this.updateOrientationLayout();
   }
 
   /**
@@ -42,9 +48,11 @@ export class MobileDrawer {
   private createDrawer(): HTMLElement {
     const drawer = document.createElement('div');
     drawer.className = 'mobile-drawer';
+    drawer.classList.add(this.currentOrientation); // Add orientation class
     drawer.setAttribute('role', 'dialog');
     drawer.setAttribute('aria-label', 'Navigation menu');
     drawer.setAttribute('aria-hidden', 'true');
+    drawer.setAttribute('data-orientation', this.currentOrientation);
 
     const header = document.createElement('div');
     header.className = 'drawer-header';
@@ -224,6 +232,50 @@ export class MobileDrawer {
    */
   public onCategoryChange(callback: (category: number) => void): void {
     this.categoryChangeCallbacks.push(callback);
+  }
+
+  /**
+   * Set orientation and update layout
+   */
+  public setOrientation(orientation: Orientation): void {
+    if (this.currentOrientation === orientation) {
+      return; // No change needed
+    }
+
+    this.currentOrientation = orientation;
+    this.updateOrientationLayout();
+  }
+
+  /**
+   * Get current orientation
+   */
+  public getOrientation(): Orientation {
+    return this.currentOrientation;
+  }
+
+  /**
+   * Update layout based on current orientation
+   */
+  private updateOrientationLayout(): void {
+    // Remove old orientation classes
+    this.drawerElement.classList.remove('portrait', 'landscape');
+    
+    // Add new orientation class
+    this.drawerElement.classList.add(this.currentOrientation);
+
+    // Update aria attributes
+    this.drawerElement.setAttribute('data-orientation', this.currentOrientation);
+
+    // Update drawer width based on orientation
+    // Portrait: 80% width (more immersive)
+    // Landscape: 60% width (less space needed)
+    if (this.currentOrientation === 'landscape') {
+      this.drawerElement.style.maxWidth = '300px';
+      this.drawerElement.style.width = '60%';
+    } else {
+      this.drawerElement.style.maxWidth = '320px';
+      this.drawerElement.style.width = '80%';
+    }
   }
 
   /**

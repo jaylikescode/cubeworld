@@ -1,4 +1,5 @@
 import { ToolMode } from '../types/VoxelTypes';
+import type { Orientation } from '../utils/OrientationManager';
 
 /**
  * Tool configuration for mobile navigation
@@ -13,11 +14,13 @@ interface ToolConfig {
 /**
  * MobileBottomNav - Bottom navigation bar for mobile devices
  * Provides quick access to main tools: Place, Break, Paint, Fill, Menu
+ * Supports both portrait and landscape orientations
  */
 export class MobileBottomNav {
   private container: HTMLElement;
   private navElement: HTMLElement;
   private activeTool: string = 'place';
+  private currentOrientation: Orientation = 'portrait';
   private toolChangeCallbacks: ((tool: string) => void)[] = [];
   private menuOpenCallbacks: (() => void)[] = [];
 
@@ -42,8 +45,10 @@ export class MobileBottomNav {
   private createNavigationBar(): HTMLElement {
     const nav = document.createElement('div');
     nav.className = 'mobile-bottom-nav';
+    nav.classList.add(this.currentOrientation); // Add orientation class
     nav.setAttribute('role', 'navigation');
     nav.setAttribute('aria-label', 'Mobile tool navigation');
+    nav.setAttribute('data-orientation', this.currentOrientation);
 
     this.tools.forEach(tool => {
       const button = this.createToolButton(tool);
@@ -184,6 +189,39 @@ export class MobileBottomNav {
    */
   private triggerMenuOpen(): void {
     this.menuOpenCallbacks.forEach(callback => callback());
+  }
+
+  /**
+   * Set orientation and update layout
+   */
+  public setOrientation(orientation: Orientation): void {
+    if (this.currentOrientation === orientation) {
+      return; // No change needed
+    }
+
+    this.currentOrientation = orientation;
+    this.updateOrientationLayout();
+  }
+
+  /**
+   * Get current orientation
+   */
+  public getOrientation(): Orientation {
+    return this.currentOrientation;
+  }
+
+  /**
+   * Update layout based on current orientation
+   */
+  private updateOrientationLayout(): void {
+    // Remove old orientation classes
+    this.navElement.classList.remove('portrait', 'landscape');
+    
+    // Add new orientation class
+    this.navElement.classList.add(this.currentOrientation);
+
+    // Update aria attributes for accessibility
+    this.navElement.setAttribute('data-orientation', this.currentOrientation);
   }
 
   /**

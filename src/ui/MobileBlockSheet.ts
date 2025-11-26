@@ -1,4 +1,5 @@
 import { BlockType, BLOCK_TYPES } from '../types/VoxelTypes';
+import type { Orientation } from '../utils/OrientationManager';
 
 /**
  * Get block icon - using dynamic approach to avoid duplication
@@ -82,7 +83,8 @@ function getBlockIcon(blockType: BlockType): string {
 
 /**
  * MobileBlockSheet - Bottom sheet for block selection on mobile devices
- * Slides up from bottom to show block grid
+ * Slides up from bottom (portrait) or in from right (landscape)
+ * Supports both portrait and landscape orientations
  */
 export class MobileBlockSheet {
   private container: HTMLElement;
@@ -91,10 +93,12 @@ export class MobileBlockSheet {
   private gridElement: HTMLElement;
   private isOpenState: boolean = false;
   private selectedBlock?: BlockType;
+  private currentOrientation: Orientation = 'portrait';
   private blockSelectCallbacks: ((block: BlockType) => void)[] = [];
 
   // Touch gesture tracking
   private touchStartY: number = 0;
+  private touchStartX: number = 0;
   private isDragging: boolean = false;
 
   constructor(container: HTMLElement) {
@@ -107,6 +111,9 @@ export class MobileBlockSheet {
     this.container.appendChild(this.sheetElement);
 
     this.attachEventListeners();
+    
+    // Initialize grid layout based on initial orientation
+    this.updateGridLayout();
   }
 
   /**
@@ -125,9 +132,11 @@ export class MobileBlockSheet {
   private createSheet(): HTMLElement {
     const sheet = document.createElement('div');
     sheet.className = 'mobile-block-sheet';
+    sheet.classList.add(this.currentOrientation); // Add orientation class
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-label', 'Block selection');
     sheet.setAttribute('aria-hidden', 'true');
+    sheet.setAttribute('data-orientation', this.currentOrientation);
 
     const handle = document.createElement('div');
     handle.className = 'bottom-sheet-handle';
@@ -156,6 +165,7 @@ export class MobileBlockSheet {
     handle.addEventListener('touchstart', (e: Event) => {
       const touchEvent = e as TouchEvent;
       this.touchStartY = touchEvent.touches[0].clientY;
+      this.touchStartX = touchEvent.touches[0].clientX;
       this.isDragging = true;
     });
 
@@ -163,12 +173,16 @@ export class MobileBlockSheet {
       const touchEvent = e as TouchEvent;
       if (!this.isDragging) return;
 
-      const currentY = touchEvent.touches[0].clientY;
-      const deltaY = currentY - this.touchStartY;
-
-      // Only allow dragging down
-      if (deltaY > 0) {
-        e.preventDefault();
+      if (this.currentOrientation === 'portrait') {
+        // Portrait: Drag down to close
+        const currentY = touchEvent.touches[0].clientY;
+        const deltaY = currentY - this.touchStartY;
+        if (deltaY > 0) e.preventDefault();
+      } else {
+        // Landscape: Drag right to close
+        const currentX = touchEvent.touches[0].clientX;
+        const deltaX = currentX - this.touchStartX;
+        if (deltaX > 0) e.preventDefault();
       }
     });
 
@@ -176,12 +190,15 @@ export class MobileBlockSheet {
       const touchEvent = e as TouchEvent;
       if (!this.isDragging) return;
 
-      const endY = touchEvent.changedTouches[0].clientY;
-      const deltaY = endY - this.touchStartY;
-
-      // Close if swiped down more than 50px
-      if (deltaY > 50) {
-        this.close();
+      if (this.currentOrientation === 'portrait') {
+        const endY = touchEvent.changedTouches[0].clientY;
+        const deltaY = endY - this.touchStartY;
+        if (deltaY > 50) this.close();
+      } else {
+        // Landscape: Drag right to close
+        const endX = touchEvent.changedTouches[0].clientX;
+        const deltaX = endX - this.touchStartX;
+        if (deltaX > 50) this.close();
       }
 
       this.isDragging = false;
@@ -345,6 +362,54 @@ export class MobileBlockSheet {
    */
   public onBlockSelect(callback: (block: BlockType) => void): void {
     this.blockSelectCallbacks.push(callback);
+  }
+
+  /**
+   * Set orientation and update layout
+   */
+  public setOrientation(orientation: Orientation): void {
+    if (this.currentOrientation === orientation) {
+      return; // No change needed
+    }
+
+    this.currentOrientation = orientation;
+    this.updateOrientationLayout();
+  }
+
+  /**
+   * Get current orientation
+   */
+  public getOrientation(): Orientation {
+    return this.currentOrientation;
+  }
+
+  /**
+   * Update layout based on current orientation
+   */
+  private updateOrientationLayout(): void {
+    // Remove old orientation classes
+    this.sheetElement.classList.remove('portrait', 'landscape');
+    
+    // Add new orientation class
+    this.sheetElement.classList.add(this.currentOrientation);
+
+    // Update aria attributes
+    this.sheetElement.setAttribute('data-orientation', this.currentOrientation);
+
+    // Update grid layout based on orientation
+    this.updateGridLayout();
+  }
+
+  /**
+   * Update grid layout based on orientation
+   */
+  private updateGridLayout(): void {
+    // Portrait: 3 columns, more compact
+    // Landscape: 4 columns, more horizontal space
+    // columnsCount removed as it was unused, relying on auto-fill with minmax
+    const minBlockSize = this.currentOrientation === 'portrait' ? '100px' : '80px';
+    
+    this.gridElement.style.gridTemplateColumns = `repeat(auto-fill, minmax(${minBlockSize}, 1fr))`;
   }
 
   /**

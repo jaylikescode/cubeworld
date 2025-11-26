@@ -202,6 +202,10 @@ export class VoxelGameEngine {
     this.renderer.setSize(width, height);
   }
 
+  public handleResize(): void {
+    this.onResize();
+  }
+
   public dispose(): void {
     this.voxelWorld.dispose();
     this.toolSystem.dispose();

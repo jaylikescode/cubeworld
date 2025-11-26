@@ -1,11 +1,15 @@
+import type { Orientation } from '../utils/OrientationManager';
+
 /**
  * MobileInfoBar - Top information bar for mobile devices
  * Shows FPS, block count, and detailed info on tap
+ * Supports both portrait and landscape orientations
  */
 export class MobileInfoBar {
   private container: HTMLElement;
   private barElement: HTMLElement;
   private isExpandedState: boolean = false;
+  private currentOrientation: Orientation = 'portrait';
 
   // Info elements
   private fpsElement: HTMLElement;
@@ -37,9 +41,11 @@ export class MobileInfoBar {
   private createInfoBar(): HTMLElement {
     const bar = document.createElement('div');
     bar.className = 'mobile-info-bar';
+    bar.classList.add(this.currentOrientation); // Add orientation class
     bar.setAttribute('role', 'region');
     bar.setAttribute('aria-label', 'Game information');
     bar.setAttribute('aria-expanded', 'false');
+    bar.setAttribute('data-orientation', this.currentOrientation);
 
     // Compact view (always visible)
     const compactView = document.createElement('div');
@@ -154,6 +160,55 @@ export class MobileInfoBar {
    */
   public isExpanded(): boolean {
     return this.isExpandedState;
+  }
+
+  /**
+   * Set orientation and update layout
+   */
+  public setOrientation(orientation: Orientation, autoExpandInLandscape: boolean = true): void {
+    if (this.currentOrientation === orientation) {
+      return; // No change needed
+    }
+
+    this.currentOrientation = orientation;
+    this.updateOrientationLayout(autoExpandInLandscape);
+  }
+
+  /**
+   * Get current orientation
+   */
+  public getOrientation(): Orientation {
+    return this.currentOrientation;
+  }
+
+  /**
+   * Update layout based on current orientation
+   */
+  private updateOrientationLayout(autoExpandInLandscape: boolean): void {
+    // Remove old orientation classes
+    this.barElement.classList.remove('portrait', 'landscape');
+    
+    // Add new orientation class
+    this.barElement.classList.add(this.currentOrientation);
+
+    // Update aria attributes
+    this.barElement.setAttribute('data-orientation', this.currentOrientation);
+
+    // Auto-expand in landscape mode if option is enabled
+    if (this.currentOrientation === 'landscape' && autoExpandInLandscape) {
+      if (!this.isExpandedState) {
+        this.barElement.classList.add('expanded');
+        this.barElement.setAttribute('aria-expanded', 'true');
+        this.isExpandedState = true;
+      }
+    } else if (this.currentOrientation === 'portrait' && autoExpandInLandscape) {
+      // Auto-collapse in portrait mode
+      if (this.isExpandedState) {
+        this.barElement.classList.remove('expanded');
+        this.barElement.setAttribute('aria-expanded', 'false');
+        this.isExpandedState = false;
+      }
+    }
   }
 
   /**
