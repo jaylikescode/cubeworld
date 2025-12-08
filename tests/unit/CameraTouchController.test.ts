@@ -335,9 +335,13 @@ describe('CameraTouchController', () => {
           // Wait for momentum animation frame
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              // Should have been called by momentum
-              expect(mockCameraController.rotateCamera).toHaveBeenCalled();
-              done();
+              try {
+                // Should have been called by momentum
+                expect(mockCameraController.rotateCamera).toHaveBeenCalled();
+                done();
+              } catch (error) {
+                done(error);
+              }
             });
           });
         }, 10);
