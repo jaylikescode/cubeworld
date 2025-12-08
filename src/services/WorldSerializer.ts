@@ -1,13 +1,13 @@
 /**
  * WorldSerializer
  *
- * 월드 데이터를 직렬화/역직렬화하여 저장소에 저장 가능한 형식으로 변환
+ * Converts world data to/from a format storable in storage by serializing/deserializing it.
  *
  * Responsibilities:
- * - VoxelWorld를 SerializedWorld로 변환 (serialize)
- * - SerializedWorld를 WorldData로 변환 (deserialize)
- * - Uint8Array <-> Base64 변환
- * - 데이터 유효성 검증
+ * - Convert VoxelWorld to SerializedWorld (serialize)
+ * - Convert SerializedWorld to WorldData (deserialize)
+ * - Uint8Array <-> Base64 conversion
+ * - Data validation
  */
 
 import type { VoxelWorld } from '../core/VoxelWorld';
@@ -22,30 +22,30 @@ import { StorageError } from '../types/SerializationTypes';
 import type { Chunk } from '../types/VoxelTypes';
 
 export class WorldSerializer {
-  /** 현재 직렬화 포맷 버전 */
+  /** Current serialization format version */
   private static readonly VERSION = '1.0.0';
 
-  /** 지원하는 버전 목록 (하위 호환성) */
+  /** Supported version list (backward compatibility) */
   private static readonly SUPPORTED_VERSIONS = ['1.0.0'];
 
   /**
-   * VoxelWorld를 직렬화된 데이터로 변환
+   * Convert VoxelWorld to serialized data
    *
-   * @param world - 직렬화할 VoxelWorld 인스턴스
-   * @returns 직렬화된 월드 데이터
+   * @param world - VoxelWorld instance to serialize
+   * @returns Serialized world data
    */
   serialize(world: VoxelWorld): SerializedWorld {
     const now = Date.now();
 
-    // 청크 직렬화
+    // Serialize chunks
     const chunks = this.serializeChunks(world);
 
-    // 메타데이터 생성
+    // Create metadata
     const metadata: WorldMetadata = {
-      playTime: 0, // TODO: Phase 2에서 실제 플레이 타임 추적
+      playTime: 0, // TODO: Track actual play time in Phase 2
       blockCount: world.getTotalBlockCount(),
       lastSaved: now,
-      worldName: undefined // TODO: Phase 2에서 월드 이름 기능 추가
+      worldName: undefined // TODO: Add world name feature in Phase 2
     };
 
     return {
@@ -58,20 +58,20 @@ export class WorldSerializer {
   }
 
   /**
-   * 직렬화된 데이터를 WorldData로 변환
+   * Convert serialized data to WorldData
    *
-   * @param data - 직렬화된 월드 데이터
-   * @returns 역직렬화된 월드 데이터
-   * @throws {StorageError} 버전 불일치 또는 데이터 손상 시
+   * @param data - Serialized world data
+   * @returns Deserialized world data
+   * @throws {StorageError} If version mismatch or data corruption
    */
   deserialize(data: SerializedWorld): WorldData {
-    // 버전 검증
+    // Validate version
     this.validateVersion(data.version);
 
-    // 필수 필드 검증
+    // Validate required fields
     this.validateData(data);
 
-    // 청크 역직렬화
+    // Deserialize chunks
     const chunks = this.deserializeChunks(data.chunks);
 
     return {
@@ -82,7 +82,7 @@ export class WorldSerializer {
   }
 
   /**
-   * 월드의 모든 청크를 직렬화
+   * Serialize all chunks in the world
    */
   private serializeChunks(world: VoxelWorld): SerializedChunk[] {
     const chunks = world.getChunks();
@@ -100,7 +100,7 @@ export class WorldSerializer {
   }
 
   /**
-   * 직렬화된 청크들을 Map으로 역직렬화
+   * Deserialize serialized chunks into a Map
    */
   private deserializeChunks(chunks: SerializedChunk[]): Map<string, ChunkData> {
     const chunkMap = new Map<string, ChunkData>();
@@ -111,7 +111,7 @@ export class WorldSerializer {
       try {
         const blocks = this.decodeBlocks(serializedChunk.blocks);
 
-        // 블록 데이터 크기 검증
+        // Validate block data size
         const expectedSize = 16 * 64 * 16; // CHUNK_SIZE x CHUNK_HEIGHT x CHUNK_SIZE
         if (blocks.length !== expectedSize) {
           throw new Error(`Invalid chunk size: expected ${expectedSize}, got ${blocks.length}`);
@@ -134,7 +134,7 @@ export class WorldSerializer {
   }
 
   /**
-   * Uint8Array를 Base64 문자열로 인코딩
+   * Encode Uint8Array to Base64 string
    *
    * Browser-compatible Base64 encoding
    */
@@ -152,7 +152,7 @@ export class WorldSerializer {
   }
 
   /**
-   * Base64 문자열을 Uint8Array로 디코딩
+   * Decode Base64 string to Uint8Array
    *
    * Browser-compatible Base64 decoding
    */
@@ -176,7 +176,7 @@ export class WorldSerializer {
   }
 
   /**
-   * 데이터 버전 검증
+   * Validate data version
    */
   private validateVersion(version: string): void {
     if (!WorldSerializer.SUPPORTED_VERSIONS.includes(version)) {
@@ -188,10 +188,10 @@ export class WorldSerializer {
   }
 
   /**
-   * 직렬화된 데이터의 필수 필드 검증
+   * Validate required fields of serialized data
    */
   private validateData(data: SerializedWorld): void {
-    // 필수 필드 존재 여부 검증
+    // Validate existence of required fields
     if (typeof data.version !== 'string') {
       throw new StorageError('Missing or invalid version field', 'CORRUPTED_DATA');
     }
@@ -212,7 +212,7 @@ export class WorldSerializer {
       throw new StorageError('Missing or invalid metadata field', 'CORRUPTED_DATA');
     }
 
-    // 메타데이터 필수 필드 검증
+    // Validate metadata required fields
     const { metadata } = data;
     if (typeof metadata.playTime !== 'number') {
       throw new StorageError('Missing or invalid metadata.playTime', 'CORRUPTED_DATA');

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, BLOCK_TYPES, Chunk, WorldSettings } from '../types/VoxelTypes';
+import { BlockType, Chunk, WorldSettings } from '../types/VoxelTypes';
 import { NoiseGenerator } from '../utils/NoiseGenerator';
 import { WORLD_CONSTANTS } from '../constants/WorldConstants';
 import { GreedyMesher } from '../graphics/GreedyMesher';

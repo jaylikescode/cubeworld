@@ -463,7 +463,7 @@ describe('LocalStorageManager', () => {
           playTime: 0,
           blockCount: 0,
           lastSaved: Date.now(),
-          worldName: '나의 세계 🌍🎮'
+          worldName: 'My World 🌍🎮'
         }
       };
 
@@ -472,7 +472,7 @@ describe('LocalStorageManager', () => {
       const loaded = manager.loadWorld();
 
       // Then: Unicode preserved
-      expect(loaded!.metadata.worldName).toBe('나의 세계 🌍🎮');
+      expect(loaded!.metadata.worldName).toBe('My World 🌍🎮');
     });
 
     it('should handle special characters in data', () => {

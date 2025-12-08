@@ -1,8 +1,8 @@
 /**
  * World Persistence Integration Tests
  *
- * 전체 저장/로드 플로우 테스트
- * WorldSerializer + LocalStorageManager + VoxelWorld 통합
+ * Full save/load flow test
+ * Integration of WorldSerializer + LocalStorageManager + VoxelWorld
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';

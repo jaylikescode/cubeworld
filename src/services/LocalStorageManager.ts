@@ -1,32 +1,32 @@
 /**
  * LocalStorageManager
  *
- * 브라우저 localStorage를 사용하여 월드 데이터를 저장/로드하는 클래스
+ * Class for saving/loading world data using browser localStorage.
  *
  * Responsibilities:
- * - SerializedWorld 데이터를 localStorage에 저장
- * - localStorage에서 SerializedWorld 데이터 로드
- * - 저장된 데이터 존재 여부 확인
- * - 저장된 데이터 삭제
- * - 저장 용량 확인
+ * - Save SerializedWorld data to localStorage
+ * - Load SerializedWorld data from localStorage
+ * - Check for existence of saved data
+ * - Delete saved data
+ * - Check storage usage
  *
  * Design Principles:
- * - Single Responsibility: 저장소 관리만 담당
- * - Graceful Degradation: 에러 시 null 반환 (throwing 안 함)
- * - Browser Compatibility: localStorage API 사용
+ * - Single Responsibility: Only handles storage management
+ * - Graceful Degradation: Returns null on error (no throwing)
+ * - Browser Compatibility: Uses localStorage API
  */
 
 import type { SerializedWorld } from '../types/SerializationTypes';
 
 export class LocalStorageManager {
-  /** localStorage 키 이름 */
+  /** localStorage key name */
   private static readonly STORAGE_KEY = 'cubeworld_save';
 
   /**
-   * 월드 데이터를 localStorage에 저장
+   * Save world data to localStorage
    *
-   * @param data - 저장할 SerializedWorld 데이터
-   * @returns 성공 여부 (true: 성공, false: 실패)
+   * @param data - SerializedWorld data to save
+   * @returns Success status (true: success, false: failure)
    */
   saveWorld(data: SerializedWorld): boolean {
     try {
@@ -34,16 +34,16 @@ export class LocalStorageManager {
       localStorage.setItem(LocalStorageManager.STORAGE_KEY, jsonString);
       return true;
     } catch (error) {
-      // localStorage quota exceeded 또는 기타 에러
+      // localStorage quota exceeded or other error
       console.error('Failed to save world to localStorage:', error);
       return false;
     }
   }
 
   /**
-   * localStorage에서 월드 데이터 로드
+   * Load world data from localStorage
    *
-   * @returns 저장된 SerializedWorld 데이터, 없으면 null
+   * @returns Saved SerializedWorld data, or null if not found
    */
   loadWorld(): SerializedWorld | null {
     try {
@@ -56,16 +56,16 @@ export class LocalStorageManager {
       const data = JSON.parse(jsonString) as SerializedWorld;
       return data;
     } catch (error) {
-      // JSON 파싱 에러 또는 데이터 손상
+      // JSON parsing error or data corruption
       console.error('Failed to load world from localStorage:', error);
       return null;
     }
   }
 
   /**
-   * 저장된 월드가 있는지 확인
+   * Check if saved world exists
    *
-   * @returns 저장된 데이터가 있고 유효하면 true, 없거나 손상되었으면 false
+   * @returns true if saved data exists and is valid, false if not or corrupted
    */
   hasWorld(): boolean {
     try {
@@ -75,17 +75,17 @@ export class LocalStorageManager {
         return false;
       }
 
-      // 데이터 유효성 간단 체크 (JSON 파싱 가능한지)
+      // Simple data validation check (if JSON parseable)
       JSON.parse(jsonString);
       return true;
     } catch {
-      // 파싱 실패 = 손상된 데이터 = 유효한 저장 없음
+      // Parsing failed = corrupted data = no valid save
       return false;
     }
   }
 
   /**
-   * 저장된 월드 데이터 삭제
+   * Delete saved world data
    */
   clearWorld(): void {
     try {
@@ -96,9 +96,9 @@ export class LocalStorageManager {
   }
 
   /**
-   * 저장된 데이터의 크기 확인 (bytes)
+   * Check size of saved data (bytes)
    *
-   * @returns 저장된 데이터 크기 (bytes), 없으면 0
+   * @returns Saved data size (bytes), 0 if none
    */
   getSaveSize(): number {
     try {
@@ -108,8 +108,8 @@ export class LocalStorageManager {
         return 0;
       }
 
-      // JavaScript string의 byte 크기 계산
-      // UTF-16 인코딩을 고려 (각 문자는 2 bytes)
+      // Calculate byte size of JavaScript string
+      // Considering UTF-16 encoding (each character is 2 bytes)
       return new Blob([jsonString]).size;
     } catch {
       return 0;

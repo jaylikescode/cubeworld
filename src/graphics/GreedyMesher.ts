@@ -88,7 +88,6 @@ export class GreedyMesher {
               height,
               blockType,
               isPositiveFace,
-              dims,
               chunkPos
             );
 
@@ -188,7 +187,6 @@ export class GreedyMesher {
     height: number,
     blockType: BlockType,
     isPositiveFace: boolean,
-    dims: number[],
     chunkPos: number[]
   ): void {
     const u = (axis + 1) % 3;
