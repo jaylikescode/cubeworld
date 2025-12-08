@@ -3,6 +3,9 @@ import { VoxelWorld } from './VoxelWorld';
 import { CameraController } from './CameraController';
 import { VoxelToolSystem } from './VoxelToolSystem';
 import { ParticleSystem } from './ParticleSystem';
+import { Player } from './Player';
+import { Inventory } from './Inventory';
+import { CraftingSystem } from './CraftingSystem';
 import { BlockType, VoxelGameState, ToolMode } from '../types/VoxelTypes';
 
 export class VoxelGameEngine {
@@ -12,10 +15,13 @@ export class VoxelGameEngine {
   private voxelWorld: VoxelWorld;
   private toolSystem: VoxelToolSystem;
   private particleSystem: ParticleSystem;
+  private player: Player;
   private clock: THREE.Clock;
   private canvas: HTMLCanvasElement;
   private gameState: VoxelGameState;
   private onStateChange: ((state: VoxelGameState) => void) | null = null;
+  private inventory: Inventory;
+  private craftingSystem: CraftingSystem;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -43,6 +49,10 @@ export class VoxelGameEngine {
     // Initialize voxel world
     this.voxelWorld = new VoxelWorld(this.scene);
 
+    // Find safe spawn position above ground
+    const startPosition = this.voxelWorld.findSafeSpawnPosition(0, 0, 20);
+    this.player = new Player(this.voxelWorld, startPosition);
+
     // Initialize tool system
     this.toolSystem = new VoxelToolSystem(this.voxelWorld, this.scene);
 
@@ -53,6 +63,10 @@ export class VoxelGameEngine {
 
     // Add lighting
     this.setupLighting();
+
+    // Initialize inventory and crafting system
+    this.inventory = new Inventory();
+    this.craftingSystem = new CraftingSystem();
 
     // Initialize game state
     this.gameState = {
@@ -108,6 +122,14 @@ export class VoxelGameEngine {
       }
     });
 
+    // Jump with space key
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === ' ' || e.key === 'Space') {
+        e.preventDefault();
+        this.player.jump();
+      }
+    });
+
     // Window resize
     window.addEventListener('resize', () => {
       this.onResize();
@@ -119,12 +141,28 @@ export class VoxelGameEngine {
 
     const delta = this.clock.getDelta();
 
-    // Update tool selection
+    // Get movement input from camera controller
+    const movementInput = this.cameraController.getMovementInput();
+    
+    // Update player physics and position
+    this.player.update(delta, movementInput);
+    
+    // Sync camera position with player eye position
+    const eyePos = this.player.getEyePosition();
+    this.cameraController.setPosition(eyePos);
+
+    // Update mouse to center (crosshair position) for block selection
+    this.toolSystem.updateToCenter(this.canvas);
+
+    // Update tool selection using crosshair
     const chunkMeshes = this.getChunkMeshes();
     this.toolSystem.updateSelection(this.cameraController.camera, chunkMeshes);
     
     // Update game state
     this.gameState.selectedPosition = this.toolSystem.getSelectedPosition();
+
+    // Update pickaxe indicator visibility
+    this.updatePickaxeIndicator();
 
     // Update particle system
     this.particleSystem.update(delta);
@@ -135,6 +173,26 @@ export class VoxelGameEngine {
     // Render
     this.renderer.render(this.scene, this.cameraController.camera);
   };
+
+  private updatePickaxeIndicator(): void {
+    const pickaxeIndicator = document.getElementById('pickaxe-indicator');
+    if (!pickaxeIndicator) return;
+
+    const currentTool = this.toolSystem.getCurrentTool();
+    
+    if (currentTool === 'break') {
+      pickaxeIndicator.classList.add('visible');
+      
+      // Add breaking animation if block is selected
+      if (this.gameState.selectedPosition) {
+        pickaxeIndicator.classList.add('breaking');
+      } else {
+        pickaxeIndicator.classList.remove('breaking');
+      }
+    } else {
+      pickaxeIndicator.classList.remove('visible', 'breaking');
+    }
+  }
 
   private getChunkMeshes(): THREE.Object3D[] {
     const meshes: THREE.Object3D[] = [];
@@ -206,7 +264,16 @@ export class VoxelGameEngine {
     this.onResize();
   }
 
+  public getInventory(): Inventory {
+    return this.inventory;
+  }
+
+  public getCraftingSystem(): CraftingSystem {
+    return this.craftingSystem;
+  }
+
   public dispose(): void {
+    this.player.dispose();
     this.voxelWorld.dispose();
     this.toolSystem.dispose();
     this.particleSystem.dispose();

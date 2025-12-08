@@ -243,6 +243,59 @@ export class VoxelWorld {
     return chunk.blocks[index];
   }
 
+  /**
+   * Find the topmost solid block at a given X, Z position
+   */
+  public getSurfaceHeight(worldX: number, worldZ: number): number {
+    const { chunkHeight } = this.worldSettings;
+    
+    // Search from top to bottom for first solid block
+    for (let y = chunkHeight - 1; y >= 0; y--) {
+      const block = this.getBlock(worldX, y, worldZ);
+      if (block !== BlockType.AIR && block !== BlockType.WATER) {
+        return y + 1; // Return position above the block
+      }
+    }
+    
+    // Fallback to sea level if no solid block found
+    return this.worldSettings.seaLevel + 1;
+  }
+
+  /**
+   * Find a safe spawn position above ground
+   */
+  public findSafeSpawnPosition(startX: number = 0, startZ: number = 0, searchRadius: number = 20): THREE.Vector3 {
+    let bestY = 0;
+    let bestX = startX;
+    let bestZ = startZ;
+    let highestY = 0;
+    
+    // Search in a spiral pattern for a good spawn location
+    for (let radius = 0; radius <= searchRadius; radius++) {
+      for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+        const x = Math.floor(startX + Math.cos(angle) * radius);
+        const z = Math.floor(startZ + Math.sin(angle) * radius);
+        const y = this.getSurfaceHeight(x, z);
+        
+        // Prefer higher ground (but not too high)
+        if (y > highestY && y < this.worldSettings.chunkHeight - 10) {
+          highestY = y;
+          bestX = x;
+          bestZ = z;
+          bestY = y;
+        }
+        
+        // If we found a reasonable height (above sea level, not too high), use it
+        if (y >= this.worldSettings.seaLevel && y < this.worldSettings.seaLevel + 20) {
+          return new THREE.Vector3(bestX, y + 1, bestZ);
+        }
+      }
+    }
+    
+    // Return best found position
+    return new THREE.Vector3(bestX, bestY + 1, bestZ);
+  }
+
   public setBlock(worldX: number, worldY: number, worldZ: number, blockType: BlockType): void {
     const { chunkSize, chunkHeight } = this.worldSettings;
     const chunkX = Math.floor(worldX / chunkSize);
