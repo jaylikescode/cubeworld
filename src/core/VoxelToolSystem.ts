@@ -51,6 +51,17 @@ export class VoxelToolSystem {
     this.mouse.y = -((y - rect.top) / rect.height) * 2 + 1;
   }
 
+  /**
+   * Update mouse to center of screen (for crosshair-based aiming)
+   */
+  public updateToCenter(canvas: HTMLElement): void {
+    const rect = canvas.getBoundingClientRect();
+    // Center of screen
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    this.updateMousePosition(centerX, centerY, canvas);
+  }
+
   public updateSelection(camera: THREE.Camera, chunks: THREE.Object3D[]): void {
     this.raycaster.setFromCamera(this.mouse, camera);
     

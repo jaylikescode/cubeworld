@@ -22,7 +22,19 @@ function init(): void {
     return;
   }
 
+  // Make canvas focusable for keyboard input
+  canvas.tabIndex = 0;
+  canvas.style.outline = 'none';
+  
+  // Focus canvas on click to enable keyboard input
+  canvas.addEventListener('click', () => {
+    canvas.focus();
+  });
+  
   container.insertBefore(canvas, container.firstChild);
+  
+  // Focus canvas initially
+  canvas.focus();
 
   // Initialize voxel game engine
   const gameEngine = new VoxelGameEngine(canvas);
