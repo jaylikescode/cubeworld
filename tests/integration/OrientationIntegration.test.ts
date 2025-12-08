@@ -46,7 +46,6 @@ vi.mock('../../src/utils/DeviceDetector', () => {
 describe('Orientation Integration', () => {
   let uiManager: VoxelUIManager;
   let gameEngine: VoxelGameEngine;
-  let container: HTMLElement;
 
   beforeEach(() => {
     // Setup DOM environment
@@ -60,9 +59,7 @@ describe('Orientation Integration', () => {
       <input type="text" id="block-search" />
       <div id="toast-container"></div>
     `;
-    
-    container = document.getElementById('ui-overlay')!;
-    
+
     // Create mock game engine
     gameEngine = new VoxelGameEngine({} as HTMLCanvasElement);
     
