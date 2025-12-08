@@ -1,0 +1,121 @@
+
+/* ========================================
+   LANDSCAPE ORIENTATION ADAPTATIONS
+   ======================================== */
+
+/* Mobile Bottom Nav - Landscape Mode */
+@media (max-width: 1023px) and (orientation: landscape) {
+  /* Option for left-side vertical nav (if implemented in future) */
+  /* For now we keep it at bottom but smaller */
+  
+  .mobile-bottom-nav {
+    height: calc(50px + var(--safe-area-bottom));
+    padding-bottom: var(--safe-area-bottom);
+  }
+  
+  .mobile-nav-btn {
+    min-height: 50px;
+    min-width: 60px;
+    padding: 4px;
+  }
+  
+  .mobile-nav-icon {
+    font-size: 20px;
+  }
+  
+  .mobile-nav-label {
+    font-size: 9px;
+  }
+}
+
+/* Mobile Block Sheet - Landscape Mode */
+@media (max-width: 1023px) and (orientation: landscape) {
+  .mobile-block-sheet.landscape {
+    left: auto;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 40vw;
+    max-width: 400px;
+    max-height: 100vh;
+    border-radius: 20px 0 0 20px;
+    transform: translateX(100%);
+    padding-top: calc(var(--spacing-xl) + var(--safe-area-top));
+    padding-bottom: var(--safe-area-bottom);
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .mobile-block-sheet.landscape.open {
+    transform: translateX(0);
+  }
+  
+  .mobile-block-sheet.landscape .bottom-sheet-handle {
+    width: 4px;
+    height: 40px;
+    margin: auto var(--spacing-lg) auto 0;
+    /* Hidden in side mode as we don't support drag-to-close yet */
+    display: none; 
+  }
+  
+  .mobile-block-sheet.landscape .mobile-block-grid {
+    /* More columns in landscape */
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    overflow-y: auto;
+    flex: 1;
+  }
+}
+
+/* Mobile Info Bar - Landscape Mode */
+@media (max-width: 1023px) and (orientation: landscape) {
+  .mobile-info-bar {
+    top: var(--safe-area-top);
+    right: var(--spacing-md);
+    left: auto;
+    width: auto;
+    min-width: 250px;
+    max-width: 40%;
+    padding: var(--spacing-md);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.6);
+  }
+  
+  /* Ensure expanded content is visible */
+  .mobile-info-bar.expanded .info-detailed {
+    max-height: 300px;
+  }
+}
+
+/* Mobile Drawer - Landscape Mode */
+@media (max-width: 1023px) and (orientation: landscape) {
+  .mobile-drawer {
+    width: 60%;
+    max-width: 300px;
+  }
+}
+
+/* Canvas Adjustments - Landscape */
+@media (orientation: landscape) and (max-height: 600px) {
+  /* Optimize for short landscape screens */
+  .mobile-info-bar {
+    padding: var(--spacing-sm) var(--spacing-md);
+    transform: scale(0.9);
+    transform-origin: top right;
+  }
+  
+  .mobile-bottom-nav {
+    height: 45px;
+  }
+  
+  .mobile-nav-btn {
+    min-height: 45px;
+  }
+  
+  .mobile-nav-icon {
+    font-size: 18px;
+  }
+  
+  .mobile-nav-label {
+    display: none;
+  }
+}

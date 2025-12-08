@@ -238,6 +238,10 @@ export class VoxelGameEngine {
     return { ...this.gameState };
   }
 
+  public getWorld(): VoxelWorld {
+    return this.voxelWorld;
+  }
+
   public onGameStateChange(callback: (state: VoxelGameState) => void): void {
     this.onStateChange = callback;
   }
@@ -256,16 +260,8 @@ export class VoxelGameEngine {
     this.renderer.setSize(width, height);
   }
 
-  public getPlayer(): Player {
-    return this.player;
-  }
-
-  public getInventory(): Inventory {
-    return this.inventory;
-  }
-
-  public getCraftingSystem(): CraftingSystem {
-    return this.craftingSystem;
+  public handleResize(): void {
+    this.onResize();
   }
 
   public dispose(): void {

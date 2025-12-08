@@ -4,13 +4,25 @@ export class NoiseGenerator {
   private noise2D: NoiseFunction2D;
 
   constructor(seed?: number) {
-    this.noise2D = createNoise2D(() => seed ?? Math.random());
+    // Create a deterministic random function using the seed
+    let currentSeed = seed ?? Math.random();
+    const seededRandom = () => {
+      // Use a simple seeded random number generator
+      const x = Math.sin(currentSeed++) * 10000;
+      return x - Math.floor(x);
+    };
+    this.noise2D = createNoise2D(seededRandom);
   }
 
   /**
    * Generate fractal brownian motion noise for realistic terrain
    */
   public fbm(x: number, y: number, octaves: number, persistence: number, lacunarity: number): number {
+    // Handle edge case of 0 octaves
+    if (octaves <= 0) {
+      return 0;
+    }
+
     let total = 0;
     let frequency = 1;
     let amplitude = 1;

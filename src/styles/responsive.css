@@ -1,0 +1,400 @@
+/**
+ * Responsive CSS Framework for Mobile/Tablet Optimization
+ * Breakpoints:
+ * - Mobile Portrait: < 480px
+ * - Mobile Landscape / Phablet: 480px - 767px
+ * - Tablet Portrait: 768px - 1023px
+ * - Tablet Landscape / Small Desktop: 1024px - 1279px
+ * - Desktop: >= 1280px
+ */
+
+/* CSS Variables for responsive design */
+:root {
+  /* Touch target sizes (WCAG AA compliant) */
+  --touch-target-min: 48px;
+  --touch-target-comfortable: 56px;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+
+  /* Toolbar dimensions */
+  --toolbar-width-desktop: 400px;
+  --toolbar-width-tablet: 320px;
+  --toolbar-width-mobile: 100%;
+
+  /* Safe area insets for notches */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+/* ========================================
+   MOBILE PORTRAIT (< 480px)
+   ======================================== */
+@media (max-width: 479px) {
+  /* Hide desktop panels */
+  #toolbar {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 60vh;
+    padding: var(--spacing-lg);
+    padding-bottom: calc(var(--spacing-lg) + var(--safe-area-bottom));
+  }
+
+  #info-panel {
+    top: var(--safe-area-top);
+    right: var(--spacing-sm);
+    left: var(--spacing-sm);
+    min-width: auto;
+    padding: var(--spacing-md);
+    font-size: 11px;
+  }
+
+  #controls-help {
+    display: none; /* Hide keyboard controls on mobile */
+  }
+
+  /* Touch-optimized buttons */
+  .tool-button {
+    min-height: var(--touch-target-min);
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-size: 13px;
+  }
+
+  .category-tab {
+    min-height: var(--touch-target-min);
+    padding: var(--spacing-md) var(--spacing-sm);
+    font-size: 12px;
+    flex: 1 1 100%; /* Full width on very small screens */
+  }
+
+  .block-button {
+    min-height: 70px; /* Larger for touch */
+    padding: var(--spacing-md);
+    font-size: 12px;
+  }
+
+  #block-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    max-height: 300px;
+  }
+
+  .compact-toggle {
+    width: var(--touch-target-min);
+    height: var(--touch-target-min);
+    font-size: 16px;
+  }
+
+  #block-search {
+    min-height: var(--touch-target-min);
+    padding: var(--spacing-md);
+    font-size: 14px;
+  }
+
+  /* Adjust info panel layout */
+  #info-panel h3 {
+    font-size: 12px;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .info-item {
+    font-size: 11px;
+    margin: var(--spacing-xs) 0;
+  }
+}
+
+/* ========================================
+   MOBILE LANDSCAPE / PHABLET (480px - 767px)
+   ======================================== */
+@media (min-width: 480px) and (max-width: 767px) {
+  #toolbar {
+    max-width: 360px;
+    left: var(--spacing-md);
+    bottom: var(--spacing-md);
+    top: auto;
+    padding-bottom: calc(var(--spacing-lg) + var(--safe-area-bottom));
+  }
+
+  #info-panel {
+    right: var(--spacing-md);
+    top: calc(var(--spacing-md) + var(--safe-area-top));
+    min-width: 180px;
+  }
+
+  #controls-help {
+    display: none; /* Still hide on phablet */
+  }
+
+  .category-tab {
+    min-height: var(--touch-target-min);
+    flex: 1 1 calc(50% - 4px);
+  }
+
+  .block-button {
+    min-height: 70px;
+  }
+
+  #block-grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  }
+
+  .tool-button,
+  #block-search {
+    min-height: var(--touch-target-min);
+  }
+}
+
+/* ========================================
+   TABLET PORTRAIT (768px - 1023px)
+   ======================================== */
+@media (min-width: 768px) and (max-width: 1023px) {
+  #toolbar {
+    max-width: var(--toolbar-width-tablet);
+    left: var(--spacing-lg);
+    top: var(--spacing-lg);
+    padding: var(--spacing-lg);
+  }
+
+  #info-panel {
+    right: var(--spacing-lg);
+    top: var(--spacing-lg);
+  }
+
+  #controls-help {
+    display: block;
+    left: var(--spacing-lg);
+    bottom: var(--spacing-lg);
+  }
+
+  /* Slightly larger touch targets */
+  .category-tab,
+  .tool-button {
+    min-height: 44px;
+  }
+
+  .block-button {
+    min-height: 65px;
+  }
+
+  #block-grid {
+    grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+  }
+}
+
+/* ========================================
+   TABLET LANDSCAPE / SMALL DESKTOP (1024px - 1279px)
+   ======================================== */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  #toolbar {
+    max-width: 360px;
+  }
+
+  #block-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+}
+
+/* ========================================
+   DESKTOP (>= 1280px) - Default styles apply
+   ======================================== */
+/* Desktop styles are in the main index.html */
+
+/* ========================================
+   TOUCH DEVICES (any screen size)
+   ======================================== */
+@media (hover: none) and (pointer: coarse) {
+  /* Ensure all interactive elements have adequate touch targets */
+  .tool-button,
+  .category-tab,
+  .compact-toggle,
+  #block-search {
+    min-height: var(--touch-target-min);
+  }
+
+  .block-button {
+    min-height: 60px;
+  }
+
+  /* Remove hover effects on touch devices */
+  .tool-button:hover,
+  .category-tab:hover,
+  .block-button:hover {
+    transform: none;
+  }
+
+  /* Add active state for touch feedback */
+  .tool-button:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+
+  .category-tab:active {
+    transform: scale(0.98);
+  }
+
+  .block-button:active {
+    transform: scale(0.95);
+  }
+
+  /* Improve scrolling on touch devices */
+  #toolbar,
+  #block-grid {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Hide scrollbars on mobile for cleaner look */
+  #block-grid::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ========================================
+   LANDSCAPE ORIENTATION (any device)
+   ======================================== */
+@media (orientation: landscape) and (max-height: 600px) {
+  /* Optimize for landscape on small screens */
+  #toolbar {
+    max-height: 85vh;
+    padding: var(--spacing-md);
+  }
+
+  #toolbar h2 {
+    font-size: 16px;
+    margin-bottom: var(--spacing-md);
+  }
+
+  .tool-section h3 {
+    font-size: 12px;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  #block-grid {
+    max-height: 250px;
+  }
+
+  #info-panel {
+    padding: var(--spacing-md);
+  }
+}
+
+/* ========================================
+   HIGH DPI / RETINA DISPLAYS
+   ======================================== */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Sharper borders on high DPI */
+  #toolbar,
+  #info-panel,
+  #controls-help {
+    border-width: 1px;
+  }
+}
+
+/* ========================================
+   DARK MODE SUPPORT
+   ======================================== */
+@media (prefers-color-scheme: dark) {
+  /* Already dark by default, but can add adjustments */
+  #toolbar,
+  #info-panel,
+  #controls-help {
+    background: rgba(0, 0, 0, 0.9);
+  }
+}
+
+/* ========================================
+   REDUCED MOTION PREFERENCE
+   ======================================== */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ========================================
+   UTILITY CLASSES FOR RESPONSIVE BEHAVIOR
+   ======================================== */
+.mobile-only {
+  display: none;
+}
+
+.tablet-only {
+  display: none;
+}
+
+.desktop-only {
+  display: block;
+}
+
+@media (max-width: 767px) {
+  .mobile-only {
+    display: block;
+  }
+
+  .desktop-only,
+  .tablet-only {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .tablet-only {
+    display: block;
+  }
+
+  .mobile-only,
+  .desktop-only {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .desktop-only {
+    display: block;
+  }
+
+  .mobile-only,
+  .tablet-only {
+    display: none;
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY IMPROVEMENTS
+   ======================================== */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus visible for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid #4ecdc4;
+  outline-offset: 2px;
+}
+
+/* Ensure text is readable */
+@media (max-width: 767px) {
+  body {
+    font-size: 16px; /* Prevent iOS zoom on input focus */
+  }
+}

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BlockType, BLOCK_TYPES, Chunk, WorldSettings } from '../types/VoxelTypes';
 import { NoiseGenerator } from '../utils/NoiseGenerator';
+import { WORLD_CONSTANTS } from '../constants/WorldConstants';
 
 export class VoxelWorld {
   private chunks: Map<string, Chunk>;
@@ -8,20 +9,23 @@ export class VoxelWorld {
   private noiseGenerator: NoiseGenerator;
   private blockGeometry: THREE.BoxGeometry;
   private scene: THREE.Scene;
+  private seed: number; // ✨ NEW: Store seed for serialization
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, seed?: number) { // ✨ MODIFIED: Optional seed parameter
     this.scene = scene;
     this.chunks = new Map();
     this.worldSettings = {
-      chunkSize: 16,
-      chunkHeight: 64,
-      renderDistance: 3,
-      seaLevel: 32,
+      chunkSize: WORLD_CONSTANTS.CHUNK_SIZE,
+      chunkHeight: WORLD_CONSTANTS.CHUNK_HEIGHT,
+      renderDistance: WORLD_CONSTANTS.DEFAULT_RENDER_DISTANCE,
+      seaLevel: WORLD_CONSTANTS.SEA_LEVEL,
     };
-    
-    this.noiseGenerator = new NoiseGenerator(Math.random());
+
+    // ✨ MODIFIED: Use provided seed or generate random
+    this.seed = seed ?? Math.random();
+    this.noiseGenerator = new NoiseGenerator(this.seed);
     this.blockGeometry = new THREE.BoxGeometry(1, 1, 1);
-    
+
     this.generateWorld();
   }
 
@@ -61,13 +65,13 @@ export class VoxelWorld {
         for (let y = 0; y < chunkHeight; y++) {
           const index = this.getBlockIndex(x, y, z);
           
-          if (y === 0) {
+          if (y === WORLD_CONSTANTS.BEDROCK_LEVEL) {
             // Bedrock at bottom
             blocks[index] = BlockType.BEDROCK;
-          } else if (y < height - 4) {
+          } else if (y < height - WORLD_CONSTANTS.STONE_DEPTH) {
             // Stone underground
             blocks[index] = BlockType.STONE;
-          } else if (y < height - 1) {
+          } else if (y < height - WORLD_CONSTANTS.DIRT_DEPTH) {
             // Dirt layer
             blocks[index] = BlockType.DIRT;
           } else if (y === height - 1 && y >= seaLevel) {
@@ -83,15 +87,15 @@ export class VoxelWorld {
             // Air
             blocks[index] = BlockType.AIR;
           }
-          
+
           // Add snow on high peaks
-          if (y >= height && height > seaLevel + 15 && y < height + 2) {
+          if (y >= height && height > seaLevel + WORLD_CONSTANTS.SNOW_MIN_HEIGHT && y < height + WORLD_CONSTANTS.SNOW_LAYER_THICKNESS) {
             blocks[index] = BlockType.SNOW;
           }
         }
         
         // Randomly place trees
-        if (height >= seaLevel + 2 && Math.random() < 0.02) {
+        if (height >= seaLevel + WORLD_CONSTANTS.TREE_MIN_ALTITUDE && Math.random() < WORLD_CONSTANTS.TREE_SPAWN_PROBABILITY) {
           this.placeTree(blocks, x, height, z);
         }
       }
@@ -110,25 +114,41 @@ export class VoxelWorld {
 
   private getTerrainHeight(worldX: number, worldZ: number): number {
     const { chunkHeight, seaLevel } = this.worldSettings;
-    
+
     // Multiple octaves of noise for varied terrain
-    const continentalness = this.noiseGenerator.fbm(worldX * 0.005, worldZ * 0.005, 4, 0.5, 2.0);
-    const erosion = this.noiseGenerator.fbm(worldX * 0.01, worldZ * 0.01, 3, 0.5, 2.0);
-    const peaks = this.noiseGenerator.getRidged(worldX * 0.02, worldZ * 0.02, 2);
-    
+    const continentalness = this.noiseGenerator.fbm(
+      worldX * WORLD_CONSTANTS.CONTINENTAL_SCALE,
+      worldZ * WORLD_CONSTANTS.CONTINENTAL_SCALE,
+      WORLD_CONSTANTS.CONTINENTAL_OCTAVES,
+      0.5,
+      2.0
+    );
+    const erosion = this.noiseGenerator.fbm(
+      worldX * WORLD_CONSTANTS.EROSION_SCALE,
+      worldZ * WORLD_CONSTANTS.EROSION_SCALE,
+      WORLD_CONSTANTS.EROSION_OCTAVES,
+      0.5,
+      2.0
+    );
+    const peaks = this.noiseGenerator.getRidged(
+      worldX * WORLD_CONSTANTS.PEAKS_SCALE,
+      worldZ * WORLD_CONSTANTS.PEAKS_SCALE,
+      WORLD_CONSTANTS.PEAKS_OCTAVES
+    );
+
     // Combine noise layers
     let height = seaLevel;
-    height += continentalness * 20; // Continental shape
-    height += erosion * 10; // Erosion detail
-    height += peaks * 15; // Mountain peaks
-    
+    height += continentalness * WORLD_CONSTANTS.CONTINENTAL_AMPLITUDE;
+    height += erosion * WORLD_CONSTANTS.EROSION_AMPLITUDE;
+    height += peaks * WORLD_CONSTANTS.PEAKS_AMPLITUDE;
+
     return Math.floor(Math.max(1, Math.min(chunkHeight - 1, height)));
   }
 
   private placeTree(blocks: Uint8Array, x: number, y: number, z: number): void {
     const { chunkSize, chunkHeight } = this.worldSettings;
-    const trunkHeight = 4 + Math.floor(Math.random() * 2);
-    
+    const trunkHeight = WORLD_CONSTANTS.MIN_TREE_HEIGHT + Math.floor(Math.random() * WORLD_CONSTANTS.MAX_TREE_VARIATION);
+
     // Trunk
     for (let ty = 0; ty < trunkHeight; ty++) {
       const treeY = y + ty;
@@ -137,9 +157,9 @@ export class VoxelWorld {
         blocks[index] = BlockType.WOOD;
       }
     }
-    
+
     // Leaves (simple sphere)
-    const leafRadius = 2;
+    const leafRadius = WORLD_CONSTANTS.TREE_LEAF_RADIUS;
     for (let lx = -leafRadius; lx <= leafRadius; lx++) {
       for (let ly = -1; ly <= leafRadius; ly++) {
         for (let lz = -leafRadius; lz <= leafRadius; lz++) {
@@ -421,6 +441,63 @@ export class VoxelWorld {
     });
     this.chunks.clear();
     this.blockGeometry.dispose();
+  }
+
+  // ✨ NEW: Getter methods for serialization
+  /**
+   * Get the world generation seed
+   * @returns The seed number used for world generation
+   */
+  public getSeed(): number {
+    return this.seed;
+  }
+
+  /**
+   * Get all chunks in the world
+   * @returns Map of chunk keys to Chunk objects
+   */
+  public getChunks(): Map<string, Chunk> {
+    return this.chunks;
+  }
+
+  // ✨ NEW: Load world from deserialized data
+  /**
+   * Load world from deserialized data
+   * Clears existing chunks and rebuilds from saved data
+   *
+   * @param data - WorldData from deserializer
+   */
+  public loadFromData(data: import('../types/SerializationTypes').WorldData): void {
+    // Clear existing chunks
+    this.chunks.forEach(chunk => {
+      if (chunk.mesh) {
+        this.scene.remove(chunk.mesh);
+        chunk.mesh.geometry.dispose();
+        if (Array.isArray(chunk.mesh.material)) {
+          chunk.mesh.material.forEach(m => m.dispose());
+        } else {
+          chunk.mesh.material.dispose();
+        }
+      }
+    });
+    this.chunks.clear();
+
+    // Set seed from loaded data
+    this.seed = data.seed;
+    this.noiseGenerator = new NoiseGenerator(this.seed);
+
+    // Load chunks
+    data.chunks.forEach((chunkData, key) => {
+      const chunk: Chunk = {
+        x: chunkData.x,
+        z: chunkData.z,
+        blocks: chunkData.blocks,
+        mesh: null
+      };
+
+      this.chunks.set(key, chunk);
+      this.buildChunkMesh(chunk);
+    });
   }
 }
 

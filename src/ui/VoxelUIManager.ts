@@ -1,37 +1,305 @@
 import { VoxelGameEngine } from '../core/VoxelGameEngine';
 import { VoxelGameState, BlockType, ToolMode, BLOCK_TYPES } from '../types/VoxelTypes';
-import { CraftingUI } from './CraftingUI';
+import { BlockCategoryManager } from './BlockCategoryManager';
+import { DeviceDetector } from '../utils/DeviceDetector';
+import { OrientationManager, type Orientation } from '../utils/OrientationManager';
+import { MobileBottomNav } from './MobileBottomNav';
+import { MobileBlockSheet } from './MobileBlockSheet';
+import { MobileDrawer } from './MobileDrawer';
+import { MobileInfoBar } from './MobileInfoBar';
+import { WorldSerializer } from '../services/WorldSerializer';
+import { LocalStorageManager } from '../services/LocalStorageManager';
+
+/**
+ * Block icon mapping for UI display
+ */
+const BLOCK_ICONS: Record<BlockType, string> = {
+  // Air and liquids
+  [BlockType.AIR]: '⬛',
+  [BlockType.WATER]: '💧',
+  [BlockType.LAVA]: '🌋',
+
+  // Natural blocks
+  [BlockType.GRASS]: '🟩',
+  [BlockType.DIRT]: '🟫',
+  [BlockType.STONE]: '⬜',
+  [BlockType.SAND]: '🟨',
+  [BlockType.GRAVEL]: '◽',
+  [BlockType.CLAY]: '🟧',
+  [BlockType.SNOW]: '❄️',
+  [BlockType.ICE]: '🧊',
+  [BlockType.BEDROCK]: '⬛',
+  [BlockType.SANDSTONE]: '🟫',
+  [BlockType.RED_SAND]: '🟥',
+  [BlockType.PODZOL]: '🟤',
+  [BlockType.MYCELIUM]: '🟣',
+  [BlockType.NETHERRACK]: '🔴',
+  [BlockType.END_STONE]: '🟡',
+  [BlockType.OBSIDIAN]: '⬛',
+
+  // Wood types
+  [BlockType.WOOD]: '🪵',
+  [BlockType.OAK_LOG]: '🪵',
+  [BlockType.BIRCH_LOG]: '🪵',
+  [BlockType.SPRUCE_LOG]: '🪵',
+  [BlockType.DARK_OAK_LOG]: '🪵',
+  [BlockType.ACACIA_LOG]: '🪵',
+
+  // Leaves
+  [BlockType.LEAVES]: '🍃',
+  [BlockType.OAK_LEAVES]: '🍃',
+  [BlockType.BIRCH_LEAVES]: '🍃',
+  [BlockType.SPRUCE_LEAVES]: '🍃',
+  [BlockType.DARK_OAK_LEAVES]: '🍃',
+  [BlockType.ACACIA_LEAVES]: '🍃',
+
+  // Ores
+  [BlockType.COAL_ORE]: '⚫',
+  [BlockType.IRON_ORE]: '⚪',
+  [BlockType.GOLD_ORE]: '🟡',
+  [BlockType.DIAMOND_ORE]: '💎',
+  [BlockType.EMERALD_ORE]: '🟢',
+  [BlockType.REDSTONE_ORE]: '🔴',
+  [BlockType.LAPIS_ORE]: '🔵',
+  [BlockType.COPPER_ORE]: '🟠',
+  [BlockType.QUARTZ_ORE]: '⚪',
+
+  // Mineral blocks
+  [BlockType.COAL_BLOCK]: '⬛',
+  [BlockType.IRON_BLOCK]: '⬜',
+  [BlockType.GOLD_BLOCK]: '🟨',
+  [BlockType.DIAMOND_BLOCK]: '💎',
+  [BlockType.EMERALD_BLOCK]: '🟩',
+  [BlockType.REDSTONE_BLOCK]: '🟥',
+
+  // Building blocks
+  [BlockType.PLANK]: '🟫',
+  [BlockType.OAK_PLANK]: '🟫',
+  [BlockType.BIRCH_PLANK]: '🟫',
+  [BlockType.SPRUCE_PLANK]: '🟫',
+  [BlockType.COBBLESTONE]: '🪨',
+  [BlockType.STONE_BRICK]: '⬜',
+  [BlockType.BRICK]: '🧱',
+  [BlockType.GLASS]: '🔷',
+  [BlockType.CONCRETE]: '⬜',
+  [BlockType.WHITE_CONCRETE]: '⬜',
+  [BlockType.GRAY_CONCRETE]: '◽',
+  [BlockType.BLACK_CONCRETE]: '⬛',
+  [BlockType.RED_CONCRETE]: '🟥',
+  [BlockType.BLUE_CONCRETE]: '🟦',
+  [BlockType.GREEN_CONCRETE]: '🟩',
+
+  // Decoration
+  [BlockType.FLOWER]: '🌸',
+  [BlockType.ROSE]: '🌹',
+  [BlockType.DANDELION]: '🌼',
+  [BlockType.TULIP]: '🌷',
+  [BlockType.MUSHROOM]: '🍄',
+  [BlockType.RED_MUSHROOM]: '🍄',
+  [BlockType.BROWN_MUSHROOM]: '🍄',
+  [BlockType.TORCH]: '🔥',
+  [BlockType.LANTERN]: '🏮',
+};
 
 export class VoxelUIManager {
   private gameEngine: VoxelGameEngine;
   private loadingElement: HTMLElement;
-  private pickaxeIndicator: HTMLElement;
-  private craftingUI: CraftingUI;
+  private categoryManager: BlockCategoryManager;
+  private deviceDetector: DeviceDetector;
+  private orientationManager?: OrientationManager;
+  private isCompactMode: boolean = false;
+  private currentSearchQuery: string = '';
+  private mobileBottomNav?: MobileBottomNav;
+  private mobileBlockSheet?: MobileBlockSheet;
+  private mobileDrawer?: MobileDrawer;
+  private mobileInfoBar?: MobileInfoBar;
+  private serializer: WorldSerializer;
+  private storage: LocalStorageManager;
 
   constructor(gameEngine: VoxelGameEngine) {
     this.gameEngine = gameEngine;
-    
+    this.categoryManager = new BlockCategoryManager();
+    this.deviceDetector = new DeviceDetector();
+    this.serializer = new WorldSerializer();
+    this.storage = new LocalStorageManager();
+
     this.loadingElement = document.getElementById('loading')!;
     this.pickaxeIndicator = document.getElementById('pickaxe-indicator')!;
     this.hideLoading();
-    
-    // Initialize crafting UI
-    this.craftingUI = new CraftingUI(
-      gameEngine.getCraftingSystem(),
-      gameEngine.getInventory()
-    );
-    
-    this.setupToolButtons();
-    this.setupBlockButtons();
-    this.setupWeatherButtons();
-    this.setupCraftingButton();
-    this.setupBreakingAnimation();
-    this.updateUI(gameEngine.getGameState());
-    
+
+    this.initializeUI();
+
     // Listen for game state changes
     gameEngine.onGameStateChange((state: VoxelGameState) => {
       this.updateUI(state);
     });
+
+    // Listen for category changes
+    this.categoryManager.onCategoryChange(() => {
+      this.renderBlockGrid();
+    });
+  }
+
+  /**
+   * Detect if we should render mobile UI
+   * Checks URL parameter first, then device detection
+   */
+  private isMobileMode(): boolean {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    // URL parameter override
+    if (urlParams.has('mode')) {
+      const mode = urlParams.get('mode');
+      if (mode === 'mobile') return true;
+      if (mode === 'desktop') return false;
+      // Invalid mode parameter - fall through to device detection
+    }
+
+    // Device detection
+    return this.deviceDetector.isMobile() || this.deviceDetector.isTablet();
+  }
+
+  private initializeUI(): void {
+    if (this.isMobileMode()) {
+      this.renderMobileUI();
+    } else {
+      this.renderDesktopUI();
+    }
+  }
+
+  /**
+   * Render desktop UI (original implementation)
+   */
+  private renderDesktopUI(): void {
+    this.setupToolButtons();
+    this.setupWeatherButtons();
+    this.setupWorldManagementButtons();
+    this.renderCategoryTabs();
+    this.renderBlockGrid();
+    this.setupSearchInput();
+    this.renderCompactToggle();
+    this.updateUI(this.gameEngine.getGameState());
+  }
+
+  /**
+   * Render mobile UI
+   */
+  private renderMobileUI(): void {
+    // Hide desktop toolbar
+    const toolbar = document.getElementById('toolbar');
+    if (toolbar) {
+      toolbar.classList.add('hidden');
+      toolbar.classList.add('mobile-mode');
+    }
+
+    // Hide desktop controls help
+    const controlsHelp = document.getElementById('controls-help');
+    if (controlsHelp) {
+      controlsHelp.classList.add('hidden');
+    }
+
+    // Initialize OrientationManager
+    this.orientationManager = new OrientationManager(this.deviceDetector);
+    
+    // Subscribe to orientation changes
+    this.orientationManager.onOrientationChange((orientation: Orientation) => {
+      this.handleOrientationChange(orientation);
+    });
+
+    // Log initial orientation info (for debugging)
+    if (process.env.NODE_ENV === 'development') {
+      this.orientationManager.logOrientationInfo();
+    }
+
+    // Create mobile bottom navigation
+    const uiOverlay = document.getElementById('ui-overlay');
+    if (uiOverlay) {
+      this.mobileBottomNav = new MobileBottomNav(uiOverlay);
+
+      // Handle tool changes
+      this.mobileBottomNav.onToolChange((tool: string) => {
+        this.gameEngine.setTool(tool as ToolMode);
+
+        // Open block sheet when Place or Paint tool is selected
+        if ((tool === 'place' || tool === 'paint') && this.mobileBlockSheet) {
+          this.mobileBlockSheet.open();
+        }
+      });
+
+      // Create mobile drawer
+      this.mobileDrawer = new MobileDrawer(uiOverlay, this.categoryManager);
+
+      // Handle menu button - open drawer
+      this.mobileBottomNav.onMenuOpen(() => {
+        if (this.mobileDrawer) {
+          this.mobileDrawer.open();
+        }
+      });
+
+      // Handle category changes from drawer
+      this.mobileDrawer.onCategoryChange((category: number) => {
+        this.categoryManager.setCurrentCategory(category);
+        // Block sheet will be updated automatically via categoryManager.onCategoryChange
+      });
+
+      // Create mobile block sheet
+      this.mobileBlockSheet = new MobileBlockSheet(uiOverlay);
+
+      // Render blocks from current category
+      const currentBlocks = this.categoryManager.getCurrentBlocks();
+      this.mobileBlockSheet.renderBlocks(currentBlocks);
+
+      // Handle block selection
+      this.mobileBlockSheet.onBlockSelect((block: BlockType) => {
+        this.gameEngine.setBlock(block);
+      });
+
+      // Listen for category changes to update block sheet
+      this.categoryManager.onCategoryChange(() => {
+        if (this.mobileBlockSheet) {
+          const blocks = this.categoryManager.getCurrentBlocks();
+          this.mobileBlockSheet.renderBlocks(blocks);
+        }
+      });
+
+      // Create mobile info bar
+      this.mobileInfoBar = new MobileInfoBar(uiOverlay);
+    }
+
+    // Still need to update UI with game state
+    this.updateUI(this.gameEngine.getGameState());
+  }
+
+  /**
+   * Handle orientation change events
+   */
+  private handleOrientationChange(orientation: Orientation): void {
+    console.log(`📱 Orientation changed to: ${orientation}`);
+
+    // Get layout config for new orientation
+    const layoutConfig = this.orientationManager?.getLayoutConfig();
+
+    // Update all mobile UI components
+    if (this.mobileBottomNav) {
+      this.mobileBottomNav.setOrientation(orientation);
+    }
+
+    if (this.mobileBlockSheet) {
+      this.mobileBlockSheet.setOrientation(orientation);
+    }
+
+    if (this.mobileInfoBar) {
+      // Auto-expand in landscape if configured
+      const autoExpand = layoutConfig?.infoBarAutoExpand ?? false;
+      this.mobileInfoBar.setOrientation(orientation, autoExpand);
+    }
+
+    if (this.mobileDrawer) {
+      this.mobileDrawer.setOrientation(orientation);
+    }
+
+    // Trigger canvas resize to adjust aspect ratio
+    this.gameEngine.handleResize();
   }
 
   private hideLoading(): void {
@@ -44,53 +312,223 @@ export class VoxelUIManager {
     }, 1000);
   }
 
+  /**
+   * Render category tabs
+   */
+  public renderCategoryTabs(): void {
+    const categoryTabsContainer = document.getElementById('category-tabs');
+    if (!categoryTabsContainer) return;
+
+    categoryTabsContainer.innerHTML = '';
+
+    const categories = this.categoryManager.getAllCategoriesWithInfo();
+
+    categories.forEach(({ category, name, icon, blockCount, isActive }) => {
+      const button = document.createElement('button');
+      button.className = `category-tab ${isActive ? 'active' : ''}`;
+      button.setAttribute('data-category', category.toString());
+      button.setAttribute('aria-label', `${name} category with ${blockCount} blocks`);
+      button.setAttribute('aria-pressed', isActive.toString());
+      button.textContent = `${icon} ${name} (${blockCount})`;
+
+      button.addEventListener('click', () => {
+        this.categoryManager.setCurrentCategory(category);
+        this.renderCategoryTabs(); // Update active state
+      });
+
+      categoryTabsContainer.appendChild(button);
+    });
+  }
+
+  /**
+   * Render block grid for current category
+   */
+  public renderBlockGrid(): void {
+    const blockGridContainer = document.getElementById('block-grid');
+    if (!blockGridContainer) return;
+
+    blockGridContainer.innerHTML = '';
+
+    let blocksToDisplay: BlockType[];
+
+    if (this.currentSearchQuery) {
+      blocksToDisplay = this.categoryManager.searchBlocks(this.currentSearchQuery, false);
+    } else {
+      blocksToDisplay = this.categoryManager.getCurrentBlocks();
+    }
+
+    if (blocksToDisplay.length === 0) {
+      const noResults = document.createElement('div');
+      noResults.className = 'no-results';
+      noResults.textContent = this.currentSearchQuery
+        ? `No blocks found for "${this.currentSearchQuery}"`
+        : 'No blocks in this category';
+      blockGridContainer.appendChild(noResults);
+      return;
+    }
+
+    blocksToDisplay.forEach(blockType => {
+      const blockData = BLOCK_TYPES[blockType];
+      const button = document.createElement('button');
+      button.className = 'block-button';
+      button.setAttribute('data-block', blockType.toString());
+      button.setAttribute('aria-label', blockData.name);
+      button.setAttribute('aria-pressed', 'false');
+
+      const icon = BLOCK_ICONS[blockType] || '❓';
+      button.textContent = `${icon} ${blockData.name}`;
+
+      // Apply block color as background
+      const color = blockData.color;
+      const r = Math.floor(color.r * 255);
+      const g = Math.floor(color.g * 255);
+      const b = Math.floor(color.b * 255);
+      button.style.background = `linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, rgb(${Math.floor(r * 0.8)}, ${Math.floor(g * 0.8)}, ${Math.floor(b * 0.8)}) 100%)`;
+
+      // Set text color based on background brightness
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      button.style.color = brightness > 128 ? '#000' : '#fff';
+
+      button.addEventListener('click', () => {
+        this.selectBlock(blockType);
+      });
+
+      blockGridContainer.appendChild(button);
+    });
+
+    // Update active state
+    this.updateActiveBlockButton();
+  }
+
+  /**
+   * Select a block and update UI
+   */
+  private selectBlock(blockType: BlockType): void {
+    // Update active state
+    const blockButtons = document.querySelectorAll('[data-block]');
+    blockButtons.forEach(btn => {
+      btn.classList.remove('active');
+      btn.setAttribute('aria-pressed', 'false');
+    });
+
+    const selectedButton = document.querySelector(`[data-block="${blockType}"]`);
+    if (selectedButton) {
+      selectedButton.classList.add('active');
+      selectedButton.setAttribute('aria-pressed', 'true');
+    }
+
+    this.gameEngine.setBlock(blockType);
+  }
+
+  /**
+   * Update active block button based on game state
+   */
+  private updateActiveBlockButton(): void {
+    const currentBlock = this.gameEngine.getGameState().currentBlock;
+    const blockButtons = document.querySelectorAll('[data-block]');
+
+    blockButtons.forEach(btn => {
+      const blockType = parseInt(btn.getAttribute('data-block')!);
+      if (blockType === currentBlock) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+      } else {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-pressed', 'false');
+      }
+    });
+  }
+
+  /**
+   * Setup search input
+   */
+  private setupSearchInput(): void {
+    const searchInput = document.getElementById('block-search') as HTMLInputElement;
+    if (!searchInput) return;
+
+    searchInput.addEventListener('input', () => {
+      this.currentSearchQuery = searchInput.value.trim();
+      this.renderBlockGrid();
+    });
+  }
+
+  /**
+   * Render compact mode toggle
+   */
+  public renderCompactToggle(): void {
+    const toolbar = document.getElementById('toolbar');
+    if (!toolbar) return;
+
+    // Check if toggle already exists
+    let toggleButton = toolbar.querySelector('.compact-toggle') as HTMLElement;
+
+    if (!toggleButton) {
+      toggleButton = document.createElement('button');
+      toggleButton.className = 'compact-toggle';
+      toggleButton.textContent = '◀';
+      toggleButton.title = 'Toggle compact mode';
+      toolbar.insertBefore(toggleButton, toolbar.firstChild);
+    }
+
+    toggleButton.addEventListener('click', () => {
+      this.isCompactMode = !this.isCompactMode;
+      toolbar.classList.toggle('compact', this.isCompactMode);
+
+      const blockGrid = document.getElementById('block-grid');
+      const categoryTabs = document.getElementById('category-tabs');
+      const searchContainer = document.getElementById('search-container');
+
+      if (this.isCompactMode) {
+        blockGrid?.classList.add('hidden');
+        categoryTabs?.classList.add('hidden');
+        searchContainer?.classList.add('hidden');
+        toggleButton.textContent = '▶';
+      } else {
+        blockGrid?.classList.remove('hidden');
+        categoryTabs?.classList.remove('hidden');
+        searchContainer?.classList.remove('hidden');
+        toggleButton.textContent = '◀';
+      }
+    });
+  }
+
+  /**
+   * Setup tool buttons (legacy support)
+   */
   private setupToolButtons(): void {
     const toolButtons = document.querySelectorAll('[data-tool]');
-    
+
     toolButtons.forEach((button) => {
       button.addEventListener('click', () => {
         const tool = button.getAttribute('data-tool');
-        
+
         if (tool === 'regenerate') {
           this.gameEngine.regenerateWorld();
           return;
         }
-        
+
         // Update active state
         toolButtons.forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
-        
+
         this.gameEngine.setTool(tool as ToolMode);
       });
     });
   }
 
-  private setupBlockButtons(): void {
-    const blockButtons = document.querySelectorAll('[data-block]');
-    
-    blockButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        const blockType = parseInt(button.getAttribute('data-block')!) as BlockType;
-        
-        // Update active state
-        blockButtons.forEach(btn => btn.classList.remove('active'));
-        button.classList.add('active');
-        
-        this.gameEngine.setBlock(blockType);
-      });
-    });
-  }
-
+  /**
+   * Setup weather buttons (legacy support)
+   */
   private setupWeatherButtons(): void {
     const rainButton = document.getElementById('toggle-rain');
     const snowButton = document.getElementById('toggle-snow');
-    
+
     if (rainButton) {
       rainButton.addEventListener('click', () => {
         this.gameEngine.toggleRain();
       });
     }
-    
+
     if (snowButton) {
       snowButton.addEventListener('click', () => {
         this.gameEngine.toggleSnow();
@@ -98,26 +536,15 @@ export class VoxelUIManager {
     }
   }
 
-  private setupCraftingButton(): void {
-    const craftingButton = document.getElementById('open-crafting');
-    if (craftingButton) {
-      craftingButton.addEventListener('click', () => {
-        this.craftingUI.toggle();
-      });
-    }
-  }
-
-  private setupBreakingAnimation(): void {
-    // Breaking animation is handled by VoxelGameEngine.updatePickaxeIndicator()
-    // This method kept for potential future enhancements
-  }
-
+  /**
+   * Update UI with current game state
+   */
   private updateUI(state: VoxelGameState): void {
     // Update FPS
     const fpsElement = document.getElementById('fps');
     if (fpsElement) {
       fpsElement.textContent = state.fps.toString();
-      
+
       // Color code FPS
       if (state.fps >= 50) {
         fpsElement.style.color = '#4ecdc4';
@@ -155,12 +582,27 @@ export class VoxelUIManager {
       cursorPosElement.textContent = '-';
     }
 
-    // Update pickaxe indicator visibility
-    if (state.currentTool === 'break') {
-      this.pickaxeIndicator.classList.add('visible');
-    } else {
-      this.pickaxeIndicator.classList.remove('visible');
-      this.pickaxeIndicator.classList.remove('breaking');
+    // Update active block button
+    this.updateActiveBlockButton();
+
+    // Update mobile info bar
+    if (this.mobileInfoBar) {
+      this.mobileInfoBar.updateFPS(state.fps);
+      this.mobileInfoBar.updateBlockCount(state.blockCount);
+      this.mobileInfoBar.updateCurrentTool(this.formatToolName(state.currentTool));
+      
+      const blockData = BLOCK_TYPES[state.currentBlock];
+      this.mobileInfoBar.updateCurrentBlock(blockData.name);
+      
+      if (state.selectedPosition) {
+        this.mobileInfoBar.updateCursorPosition(
+          state.selectedPosition.x, 
+          state.selectedPosition.y, 
+          state.selectedPosition.z
+        );
+      } else {
+        this.mobileInfoBar.updateCursorPosition(null, null, null);
+      }
     }
   }
 
@@ -174,5 +616,182 @@ export class VoxelUIManager {
     };
     return names[tool] || tool;
   }
-}
 
+  /**
+   * Setup world management buttons (save/load/clear/new)
+   */
+  private setupWorldManagementButtons(): void {
+    const saveButton = document.getElementById('save-world');
+    const loadButton = document.getElementById('load-world');
+    const newButton = document.getElementById('new-world');
+    const clearButton = document.getElementById('clear-world');
+
+    if (saveButton) {
+      saveButton.addEventListener('click', () => {
+        this.handleSaveWorld();
+      });
+    }
+
+    if (loadButton) {
+      loadButton.addEventListener('click', () => {
+        this.handleLoadWorld();
+      });
+    }
+
+    if (newButton) {
+      newButton.addEventListener('click', () => {
+        this.handleNewWorld();
+      });
+    }
+
+    if (clearButton) {
+      clearButton.addEventListener('click', () => {
+        this.handleClearWorld();
+      });
+    }
+  }
+
+  /**
+   * Handle Save World button click
+   */
+  private handleSaveWorld(): void {
+    try {
+      const world = this.gameEngine.getWorld();
+      const serialized = this.serializer.serialize(world);
+      const success = this.storage.saveWorld(serialized);
+
+      if (success) {
+        this.showToast('success', '💾 World saved successfully!');
+      } else {
+        this.showToast('error', '❌ Failed to save world. Storage quota may be exceeded.');
+      }
+    } catch (error) {
+      console.error('Save world error:', error);
+      this.showToast('error', '❌ Error saving world.');
+    }
+  }
+
+  /**
+   * Handle Load World button click
+   */
+  private handleLoadWorld(): void {
+    try {
+      if (!this.storage.hasWorld()) {
+        this.showToast('info', 'ℹ️ No saved world found.');
+        return;
+      }
+
+      const loaded = this.storage.loadWorld();
+      if (!loaded) {
+        this.showToast('error', '❌ Failed to load world. Save data may be corrupted.');
+        return;
+      }
+
+      const worldData = this.serializer.deserialize(loaded);
+      const world = this.gameEngine.getWorld();
+      world.loadFromData(worldData);
+
+      this.showToast('success', '📂 World loaded successfully!');
+    } catch (error) {
+      console.error('Load world error:', error);
+      this.showToast('error', '❌ Error loading world.');
+    }
+  }
+
+  /**
+   * Handle New World button click
+   */
+  private handleNewWorld(): void {
+    const confirmed = confirm('Create a new world? This will replace the current world (unsaved changes will be lost).');
+    if (!confirmed) return;
+
+    try {
+      this.gameEngine.regenerateWorld();
+      this.showToast('success', '🆕 New world created!');
+    } catch (error) {
+      console.error('New world error:', error);
+      this.showToast('error', '❌ Error creating new world.');
+    }
+  }
+
+  /**
+   * Handle Clear Save button click
+   */
+  private handleClearWorld(): void {
+    const confirmed = confirm('Clear saved world data? This action cannot be undone.');
+    if (!confirmed) return;
+
+    try {
+      this.storage.clearWorld();
+      this.showToast('success', '🗑️ Saved world data cleared.');
+    } catch (error) {
+      console.error('Clear world error:', error);
+      this.showToast('error', '❌ Error clearing save data.');
+    }
+  }
+
+  /**
+   * Show toast notification
+   * @param type - Toast type (success, error, info)
+   * @param message - Message to display
+   */
+  private showToast(type: 'success' | 'error' | 'info', message: string): void {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    const icon = document.createElement('div');
+    icon.className = 'toast-icon';
+    icon.textContent = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+
+    const messageEl = document.createElement('div');
+    messageEl.className = 'toast-message';
+    messageEl.textContent = message;
+
+    toast.appendChild(icon);
+    toast.appendChild(messageEl);
+    container.appendChild(toast);
+
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
+  }
+
+  /**
+   * Try to auto-load saved world on initialization
+   */
+  public tryAutoLoad(): void {
+    try {
+      if (!this.storage.hasWorld()) {
+        console.log('No saved world found. Starting fresh.');
+        return;
+      }
+
+      const loaded = this.storage.loadWorld();
+      if (!loaded) {
+        console.warn('Failed to load saved world. Starting fresh.');
+        return;
+      }
+
+      const worldData = this.serializer.deserialize(loaded);
+      const world = this.gameEngine.getWorld();
+      world.loadFromData(worldData);
+
+      console.log('Auto-loaded saved world successfully.');
+      this.showToast('info', '📂 Loaded saved world.');
+    } catch (error) {
+      console.error('Auto-load error:', error);
+      // Don't show error toast for auto-load failures (silent failure)
+    }
+  }
+
+  /**
+   * Get category manager (for testing)
+   */
+  public getCategoryManager(): BlockCategoryManager {
+    return this.categoryManager;
+  }
+}
