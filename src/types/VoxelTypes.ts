@@ -12,6 +12,17 @@ export enum BlockType {
   SNOW = 8,
   COBBLESTONE = 9,
   BEDROCK = 10,
+  PRISMARINE = 11,
+  PRISMARINE_BRICKS = 12,
+  DARK_PRISMARINE = 13,
+  WOOL_WHITE = 14,
+  WOOL_BLACK = 15,
+  WOOL_RED = 16,
+  WOOL_BLUE = 17,
+  WOOL_GREEN = 18,
+  WOOL_YELLOW = 19,
+  BEACON = 20,
+  IRON_BLOCK = 21,
 }
 
 export interface BlockData {
@@ -79,6 +90,62 @@ export const BLOCK_TYPES: Record<BlockType, BlockData> = {
     type: BlockType.BEDROCK, 
     name: 'Bedrock', 
     color: new THREE.Color(0x333333) 
+  },
+  [BlockType.PRISMARINE]: { 
+    type: BlockType.PRISMARINE, 
+    name: 'Prismarine', 
+    color: new THREE.Color(0x4e9699) 
+  },
+  [BlockType.PRISMARINE_BRICKS]: { 
+    type: BlockType.PRISMARINE_BRICKS, 
+    name: 'Prismarine Bricks', 
+    color: new THREE.Color(0x3d8b8e) 
+  },
+  [BlockType.DARK_PRISMARINE]: { 
+    type: BlockType.DARK_PRISMARINE, 
+    name: 'Dark Prismarine', 
+    color: new THREE.Color(0x2d5a5c) 
+  },
+  [BlockType.WOOL_WHITE]: { 
+    type: BlockType.WOOL_WHITE, 
+    name: 'White Wool', 
+    color: new THREE.Color(0xffffff) 
+  },
+  [BlockType.WOOL_BLACK]: { 
+    type: BlockType.WOOL_BLACK, 
+    name: 'Black Wool', 
+    color: new THREE.Color(0x1e1e1e) 
+  },
+  [BlockType.WOOL_RED]: { 
+    type: BlockType.WOOL_RED, 
+    name: 'Red Wool', 
+    color: new THREE.Color(0xb02e26) 
+  },
+  [BlockType.WOOL_BLUE]: { 
+    type: BlockType.WOOL_BLUE, 
+    name: 'Blue Wool', 
+    color: new THREE.Color(0x3c44aa) 
+  },
+  [BlockType.WOOL_GREEN]: { 
+    type: BlockType.WOOL_GREEN, 
+    name: 'Green Wool', 
+    color: new THREE.Color(0x5e7c16) 
+  },
+  [BlockType.WOOL_YELLOW]: { 
+    type: BlockType.WOOL_YELLOW, 
+    name: 'Yellow Wool', 
+    color: new THREE.Color(0xfed83d) 
+  },
+  [BlockType.BEACON]: { 
+    type: BlockType.BEACON, 
+    name: 'Beacon', 
+    color: new THREE.Color(0x20c997),
+    transparent: true 
+  },
+  [BlockType.IRON_BLOCK]: { 
+    type: BlockType.IRON_BLOCK, 
+    name: 'Iron Block', 
+    color: new THREE.Color(0xcccccc) 
   },
 };
 

@@ -235,6 +235,389 @@
       font-family: monospace;
       color: #4ecdc4;
     }
+
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 20px;
+      pointer-events: none;
+      z-index: 200;
+    }
+
+    .crosshair-line {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 0 3px rgba(0, 0, 0, 0.8), 0 0 1px rgba(0, 0, 0, 0.5);
+      border-radius: 1px;
+    }
+
+    .crosshair-horizontal {
+      width: 20px;
+      height: 2px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .crosshair-vertical {
+      width: 2px;
+      height: 20px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    /* Crosshair center dot */
+    #crosshair::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 3px;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 50%;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+    }
+
+    #pickaxe-indicator {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 80px;
+      height: 80px;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      pointer-events: none;
+      z-index: 150;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    #pickaxe-indicator.visible {
+      opacity: 1;
+    }
+
+    #pickaxe-indicator.breaking {
+      animation: shake 0.1s infinite;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(-2px, -2px) rotate(-2deg); }
+      75% { transform: translate(2px, 2px) rotate(2deg); }
+    }
+
+    /* Crafting Panel */
+    #crafting-panel {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(20, 25, 40, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 30px;
+      pointer-events: all;
+      color: white;
+      min-width: 800px;
+      max-width: 1000px;
+      max-height: 80vh;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .crafting-panel-content {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .crafting-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .crafting-header h2 {
+      margin: 0;
+      font-size: 24px;
+      color: #4ecdc4;
+    }
+
+    .close-button {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .close-button:hover {
+      background: rgba(255, 0, 0, 0.3);
+      transform: rotate(90deg);
+    }
+
+    .crafting-categories {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .category-button {
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid transparent;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .category-button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .category-button.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .crafting-body {
+      display: flex;
+      gap: 20px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .recipe-section {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .recipe-section h3 {
+      margin: 0 0 15px 0;
+      font-size: 18px;
+      color: #4ecdc4;
+    }
+
+    .recipe-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-right: 10px;
+    }
+
+    .recipe-list::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .recipe-list::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+    }
+
+    .recipe-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+
+    .recipe-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .recipe-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 15px;
+      transition: all 0.3s ease;
+    }
+
+    .recipe-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .recipe-card.unavailable {
+      opacity: 0.5;
+    }
+
+    .recipe-name {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .recipe-ingredients {
+      font-size: 13px;
+      color: #ccc;
+      margin-bottom: 8px;
+    }
+
+    .recipe-result {
+      font-size: 14px;
+      color: #4ecdc4;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .craft-button {
+      width: 100%;
+      padding: 10px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .craft-button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .craft-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .inventory-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .inventory-section h3 {
+      margin: 0 0 15px 0;
+      font-size: 18px;
+      color: #4ecdc4;
+    }
+
+    .inventory-display {
+      flex: 1;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .inventory-display::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .inventory-display::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+    }
+
+    .inventory-display::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+
+    .inventory-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .item-name {
+      color: #fff;
+    }
+
+    .item-quantity {
+      color: #4ecdc4;
+      font-weight: 600;
+    }
+
+    .inventory-empty {
+      text-align: center;
+      color: #888;
+      padding: 20px;
+    }
+
+    .no-recipes {
+      text-align: center;
+      color: #888;
+      padding: 20px;
+    }
+
+    .crafting-message {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      z-index: 1001;
+      animation: slideDown 0.3s ease;
+    }
+
+    .crafting-message.success {
+      background: rgba(16, 185, 129, 0.9);
+      color: white;
+    }
+
+    .crafting-message.error {
+      background: rgba(239, 68, 68, 0.9);
+      color: white;
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translateX(-50%) translateY(-20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+    }
   </style>
 </head>
 <body>
@@ -269,6 +652,15 @@
           <button class="tool-button" data-block="7" style="background: linear-gradient(135deg, #228b22 0%, #1a6b1a 100%);">🍃 Leaves</button>
           <button class="tool-button" data-block="8" style="background: linear-gradient(135deg, #ffffff 0%, #dddddd 100%);">❄️ Snow</button>
           <button class="tool-button" data-block="9" style="background: linear-gradient(135deg, #696969 0%, #494949 100%);">🪨 Cobblestone</button>
+          <button class="tool-button" data-block="11" style="background: linear-gradient(135deg, #4e9699 0%, #3d787b 100%);">🔷 Prismarine</button>
+          <button class="tool-button" data-block="14" style="background: linear-gradient(135deg, #ffffff 0%, #dddddd 100%);">🧶 White Wool</button>
+          <button class="tool-button" data-block="20" style="background: linear-gradient(135deg, #20c997 0%, #1a9f77 100%);">📡 Beacon</button>
+          <button class="tool-button" data-block="21" style="background: linear-gradient(135deg, #cccccc 0%, #aaaaaa 100%);">🔩 Iron Block</button>
+        </div>
+
+        <div class="tool-section">
+          <h3>Crafting</h3>
+          <button class="tool-button" id="open-crafting">🔨 Crafting Table</button>
         </div>
 
         <div class="tool-section">
@@ -302,6 +694,44 @@
           <li><kbd>WASD</kbd> Move camera</li>
           <li><kbd>R</kbd> Reset view</li>
         </ul>
+      </div>
+
+      <!-- Crosshair -->
+      <div id="crosshair">
+        <div class="crosshair-line crosshair-horizontal"></div>
+        <div class="crosshair-line crosshair-vertical"></div>
+      </div>
+
+      <!-- Pickaxe Indicator -->
+      <div id="pickaxe-indicator">⛏️</div>
+
+      <!-- Crafting Panel -->
+      <div id="crafting-panel" style="display: none;">
+        <div class="crafting-panel-content">
+          <div class="crafting-header">
+            <h2>🔨 Crafting Table</h2>
+            <button id="close-crafting" class="close-button">✕</button>
+          </div>
+
+          <div class="crafting-categories">
+            <button class="category-button active" data-category="all">All</button>
+            <button class="category-button" data-category="blocks">Blocks</button>
+            <button class="category-button" data-category="entities">Entities</button>
+            <button class="category-button" data-category="special">Special</button>
+          </div>
+
+          <div class="crafting-body">
+            <div class="recipe-section">
+              <h3>Recipes</h3>
+              <div id="recipe-list" class="recipe-list"></div>
+            </div>
+
+            <div class="inventory-section">
+              <h3>Inventory</h3>
+              <div id="inventory-display" class="inventory-display"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

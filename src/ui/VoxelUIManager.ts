@@ -1,19 +1,31 @@
 import { VoxelGameEngine } from '../core/VoxelGameEngine';
 import { VoxelGameState, BlockType, ToolMode, BLOCK_TYPES } from '../types/VoxelTypes';
+import { CraftingUI } from './CraftingUI';
 
 export class VoxelUIManager {
   private gameEngine: VoxelGameEngine;
   private loadingElement: HTMLElement;
+  private pickaxeIndicator: HTMLElement;
+  private craftingUI: CraftingUI;
 
   constructor(gameEngine: VoxelGameEngine) {
     this.gameEngine = gameEngine;
     
     this.loadingElement = document.getElementById('loading')!;
+    this.pickaxeIndicator = document.getElementById('pickaxe-indicator')!;
     this.hideLoading();
+    
+    // Initialize crafting UI
+    this.craftingUI = new CraftingUI(
+      gameEngine.getCraftingSystem(),
+      gameEngine.getInventory()
+    );
     
     this.setupToolButtons();
     this.setupBlockButtons();
     this.setupWeatherButtons();
+    this.setupCraftingButton();
+    this.setupBreakingAnimation();
     this.updateUI(gameEngine.getGameState());
     
     // Listen for game state changes
@@ -86,6 +98,20 @@ export class VoxelUIManager {
     }
   }
 
+  private setupCraftingButton(): void {
+    const craftingButton = document.getElementById('open-crafting');
+    if (craftingButton) {
+      craftingButton.addEventListener('click', () => {
+        this.craftingUI.toggle();
+      });
+    }
+  }
+
+  private setupBreakingAnimation(): void {
+    // Breaking animation is handled by VoxelGameEngine.updatePickaxeIndicator()
+    // This method kept for potential future enhancements
+  }
+
   private updateUI(state: VoxelGameState): void {
     // Update FPS
     const fpsElement = document.getElementById('fps');
@@ -127,6 +153,14 @@ export class VoxelUIManager {
       cursorPosElement.textContent = `${state.selectedPosition.x}, ${state.selectedPosition.y}, ${state.selectedPosition.z}`;
     } else if (cursorPosElement) {
       cursorPosElement.textContent = '-';
+    }
+
+    // Update pickaxe indicator visibility
+    if (state.currentTool === 'break') {
+      this.pickaxeIndicator.classList.add('visible');
+    } else {
+      this.pickaxeIndicator.classList.remove('visible');
+      this.pickaxeIndicator.classList.remove('breaking');
     }
   }
 
