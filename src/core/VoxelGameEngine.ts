@@ -264,6 +264,14 @@ export class VoxelGameEngine {
     this.onResize();
   }
 
+  public getInventory(): Inventory {
+    return this.inventory;
+  }
+
+  public getCraftingSystem(): CraftingSystem {
+    return this.craftingSystem;
+  }
+
   public dispose(): void {
     this.player.dispose();
     this.voxelWorld.dispose();

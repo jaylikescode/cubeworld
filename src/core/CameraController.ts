@@ -21,15 +21,16 @@ export class CameraController {
   constructor(canvas: HTMLElement, aspect: number) {
     this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
 
-    // Initial camera position - look at terrain surface level (sea level = 32)
-    this.target = new THREE.Vector3(0, 32, 0);
-    this.spherical = new THREE.Spherical(80, Math.PI / 3, Math.PI / 4);
+    // Initial camera position - at terrain surface level (sea level = 32)
+    this.position = new THREE.Vector3(0, 40, 0);
+    // Euler angles: yaw (Y-axis rotation for left/right), pitch (X-axis rotation for up/down)
+    this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
     this.lastMousePos = new THREE.Vector2();
 
     // Initialize device detection
     this.deviceDetector = new DeviceDetector();
 
-    this.updateCameraPosition();
+    this.updateCameraRotation();
     this.setupControls(canvas);
   }
 
@@ -96,28 +97,49 @@ export class CameraController {
     // Wheel zoom disabled - movement is now handled by Player system
     // Use WASD keys for movement instead
 
-    // Keyboard controls (desktop only)
-    if (this.deviceDetector.isDesktop()) {
-      window.addEventListener('keydown', (e: KeyboardEvent) => {
-        switch (e.key.toLowerCase()) {
-          case 'r':
-            this.resetView();
-            break;
-          case 'w':
-            this.moveForward();
-            break;
-          case 's':
-            this.moveBackward();
-            break;
-          case 'a':
-            this.moveLeft();
-            break;
-          case 'd':
-            this.moveRight();
-            break;
-        }
-      });
-    }
+    // Keyboard controls - attach to both window and canvas
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      this.pressedKeys.add(key);
+      
+      // Prevent default behavior for game controls (unless typing in an input)
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || 
+                          target.tagName === 'TEXTAREA' || 
+                          target.isContentEditable;
+      
+      if (!isInputField && ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', 'r'].includes(key)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      
+      if (key === 'r' && !isInputField) {
+        this.resetView();
+      }
+    };
+    
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      this.pressedKeys.delete(key);
+      
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || 
+                          target.tagName === 'TEXTAREA' || 
+                          target.isContentEditable;
+      
+      if (!isInputField && ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown, true);
+    canvas.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keyup', handleKeyUp, true);
+    canvas.addEventListener('keyup', handleKeyUp, true);
+    
+    // Start continuous rotation loop for arrow keys
+    this.startContinuousRotation();
   }
 
   private setupTouchControls(canvas: HTMLCanvasElement): void {
@@ -137,13 +159,9 @@ export class CameraController {
       }
     });
 
-    // Pinch → Zoom camera
-    this.touchManager.onPinch((event) => {
-      // Convert scale to zoom delta
-      // Scale < 1 means pinch in (zoom out)
-      // Scale > 1 means pinch out (zoom in)
-      const zoomDelta = -(event.deltaScale * this.spherical.radius * 0.5);
-      this.zoom(zoomDelta);
+    // Pinch → Zoom camera (placeholder - zoom disabled for FPS-style camera)
+    this.touchManager.onPinch(() => {
+      // Zoom disabled - movement is handled by Player system
     });
 
     // Long press → Reset view
@@ -257,13 +275,72 @@ export class CameraController {
     this.rotate(deltaX * sensitivity, deltaY * sensitivity);
   }
 
-  public zoomCamera(delta: number): void {
-    this.zoom(delta);
+  public zoomCamera(_delta: number): void {
+    // Zoom disabled - movement is handled by Player system
   }
 
   public panCamera(deltaX: number, deltaY: number): void {
     const sensitivity = 0.05;
     this.pan(deltaX * sensitivity, deltaY * sensitivity);
+  }
+
+  /**
+   * Get movement input vector based on pressed keys
+   */
+  public getMovementInput(): THREE.Vector3 {
+    const input = new THREE.Vector3(0, 0, 0);
+    
+    if (this.pressedKeys.has('w')) {
+      input.z -= 1; // Forward
+    }
+    if (this.pressedKeys.has('s')) {
+      input.z += 1; // Backward
+    }
+    if (this.pressedKeys.has('a')) {
+      input.x -= 1; // Left
+    }
+    if (this.pressedKeys.has('d')) {
+      input.x += 1; // Right
+    }
+    
+    // Normalize diagonal movement
+    if (input.length() > 0) {
+      input.normalize();
+    }
+    
+    // Transform input to camera space
+    const forward = new THREE.Vector3(0, 0, -1);
+    const right = new THREE.Vector3(1, 0, 0);
+    forward.applyEuler(this.euler);
+    right.applyEuler(this.euler);
+    
+    // Keep on horizontal plane
+    forward.y = 0;
+    right.y = 0;
+    forward.normalize();
+    right.normalize();
+    
+    // Calculate final movement direction
+    const movement = new THREE.Vector3();
+    movement.addScaledVector(forward, -input.z);
+    movement.addScaledVector(right, input.x);
+    
+    return movement;
+  }
+
+  /**
+   * Set camera position (for following player)
+   */
+  public setPosition(pos: THREE.Vector3): void {
+    this.position.copy(pos);
+    this.updateCameraRotation();
+  }
+
+  /**
+   * Get current Euler rotation
+   */
+  public getRotation(): THREE.Euler {
+    return this.euler.clone();
   }
 }
 

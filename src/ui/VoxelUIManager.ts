@@ -99,6 +99,18 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   [BlockType.BROWN_MUSHROOM]: '🍄',
   [BlockType.TORCH]: '🔥',
   [BlockType.LANTERN]: '🏮',
+  
+  // Crafting blocks
+  [BlockType.PRISMARINE]: '🔷',
+  [BlockType.PRISMARINE_BRICKS]: '🔶',
+  [BlockType.DARK_PRISMARINE]: '⬛',
+  [BlockType.WOOL_WHITE]: '🧶',
+  [BlockType.WOOL_BLACK]: '⚫',
+  [BlockType.WOOL_RED]: '🔴',
+  [BlockType.WOOL_BLUE]: '🔵',
+  [BlockType.WOOL_GREEN]: '🟢',
+  [BlockType.WOOL_YELLOW]: '🟡',
+  [BlockType.BEACON]: '📡',
 };
 
 export class VoxelUIManager {
@@ -124,7 +136,6 @@ export class VoxelUIManager {
     this.storage = new LocalStorageManager();
 
     this.loadingElement = document.getElementById('loading')!;
-    this.pickaxeIndicator = document.getElementById('pickaxe-indicator')!;
     this.hideLoading();
 
     this.initializeUI();
@@ -207,8 +218,13 @@ export class VoxelUIManager {
     });
 
     // Log initial orientation info (for debugging)
-    if (process.env.NODE_ENV === 'development') {
-      this.orientationManager.logOrientationInfo();
+    // Check if in development mode
+    try {
+      if (typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV) {
+        this.orientationManager.logOrientationInfo();
+      }
+    } catch {
+      // Ignore if import.meta is not available
     }
 
     // Create mobile bottom navigation
