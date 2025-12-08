@@ -433,7 +433,8 @@ describe('VoxelTypes', () => {
             BlockType.BIRCH_LEAVES,
             BlockType.SPRUCE_LEAVES,
             BlockType.DARK_OAK_LEAVES,
-            BlockType.ACACIA_LEAVES
+            BlockType.ACACIA_LEAVES,
+            BlockType.BEACON
           ]).toContain(block.type);
         }
       });

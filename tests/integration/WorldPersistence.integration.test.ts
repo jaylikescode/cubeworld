@@ -304,7 +304,7 @@ describe('World Persistence Integration', () => {
         }
       };
 
-      storage.saveWorld(futureData as any);
+      storage.saveWorld(futureData);
       const loaded = storage.loadWorld();
 
       // When: Try to deserialize

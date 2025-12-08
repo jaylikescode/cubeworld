@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { VoxelUIManager } from '../../src/ui/VoxelUIManager';
 import { VoxelGameEngine } from '../../src/core/VoxelGameEngine';
-import { DeviceDetector } from '../../src/utils/DeviceDetector';
 import { OrientationManager } from '../../src/utils/OrientationManager';
 
 // Mock VoxelGameEngine
@@ -89,17 +88,17 @@ describe('Orientation Integration', () => {
 
   it('should handle orientation change events', async () => {
     // Access the orientation manager from the UI manager (via private access hack for testing)
-    const orientationManager = (uiManager as any).orientationManager as OrientationManager;
+    const orientationManager = (uiManager as unknown as { orientationManager: OrientationManager }).orientationManager;
     
     // Spy on handleResize
     const resizeSpy = vi.spyOn(gameEngine, 'handleResize');
     
     // Spy on component setOrientation methods
     // We need to get references to the actual component instances
-    const mobileBottomNav = (uiManager as any).mobileBottomNav;
-    const mobileBlockSheet = (uiManager as any).mobileBlockSheet;
-    const mobileInfoBar = (uiManager as any).mobileInfoBar;
-    const mobileDrawer = (uiManager as any).mobileDrawer;
+    const mobileBottomNav = (uiManager as unknown as { mobileBottomNav: { setOrientation: (orientation: string) => void } }).mobileBottomNav;
+    const mobileBlockSheet = (uiManager as unknown as { mobileBlockSheet: { setOrientation: (orientation: string) => void } }).mobileBlockSheet;
+    const mobileInfoBar = (uiManager as unknown as { mobileInfoBar: { setOrientation: (orientation: string, autoExpand: boolean) => void } }).mobileInfoBar;
+    const mobileDrawer = (uiManager as unknown as { mobileDrawer: { setOrientation: (orientation: string) => void } }).mobileDrawer;
     
     const navSpy = vi.spyOn(mobileBottomNav, 'setOrientation');
     const sheetSpy = vi.spyOn(mobileBlockSheet, 'setOrientation');
@@ -111,7 +110,7 @@ describe('Orientation Integration', () => {
     
     // Mock orientation change
     // We need to access the device detector to change its return value
-    const deviceDetector = (uiManager as any).deviceDetector;
+    const deviceDetector = (uiManager as unknown as { deviceDetector: { getOrientation: () => string } }).deviceDetector;
     vi.spyOn(deviceDetector, 'getOrientation').mockReturnValue('landscape');
     
     // Trigger orientation change
@@ -132,10 +131,10 @@ describe('Orientation Integration', () => {
   });
 
   it('should update DOM attributes on orientation change', async () => {
-    const orientationManager = (uiManager as any).orientationManager as OrientationManager;
+    const orientationManager = (uiManager as unknown as { orientationManager: OrientationManager }).orientationManager;
     orientationManager.setDebounceDelay(10);
-    
-    const deviceDetector = (uiManager as any).deviceDetector;
+
+    const deviceDetector = (uiManager as unknown as { deviceDetector: { getOrientation: () => string } }).deviceDetector;
     vi.spyOn(deviceDetector, 'getOrientation').mockReturnValue('landscape');
     
     window.dispatchEvent(new Event('orientationchange'));

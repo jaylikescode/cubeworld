@@ -220,7 +220,7 @@ export class VoxelUIManager {
     // Log initial orientation info (for debugging)
     // Check if in development mode
     try {
-      if (typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV) {
+      if (typeof import.meta !== 'undefined' && (import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
         this.orientationManager.logOrientationInfo();
       }
     } catch {

@@ -5,10 +5,10 @@
  * Tests written BEFORE implementation
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { WorldSerializer } from '../../../src/services/WorldSerializer';
 import { VoxelWorld } from '../../../src/core/VoxelWorld';
-import type { SerializedWorld, WorldData } from '../../../src/types/SerializationTypes';
+import type { SerializedWorld } from '../../../src/types/SerializationTypes';
 import { StorageError } from '../../../src/types/SerializationTypes';
 import * as THREE from 'three';
 import { BlockType } from '../../../src/types/VoxelTypes';
@@ -338,7 +338,7 @@ describe('WorldSerializer', () => {
           blockCount: 0,
           lastSaved: Date.now()
         }
-      } as any;
+      } as SerializedWorld;
 
       // When & Then: deserialize() throws
       expect(() => {
@@ -348,13 +348,13 @@ describe('WorldSerializer', () => {
 
     it('should validate metadata structure', () => {
       // Given: Invalid metadata
-      const invalid: SerializedWorld = {
+      const invalid = {
         version: '1.0.0',
         timestamp: Date.now(),
         seed: 12345,
         chunks: [],
-        metadata: {} as any // Empty metadata
-      };
+        metadata: {} as { playTime: number; blockCount: number; lastSaved: number }
+      } as SerializedWorld;
 
       // When & Then: deserialize() throws
       expect(() => {
