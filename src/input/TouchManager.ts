@@ -1,3 +1,5 @@
+import { DeviceDetector } from '../utils/DeviceDetector';
+
 /**
  * Touch gesture types
  */
@@ -64,6 +66,7 @@ export class TouchManager {
   private canvas: HTMLCanvasElement;
   private activeTouches: Map<number, TouchPoint> = new Map();
   private longPressTimers: Map<number, number> = new Map();
+  private deviceDetector: DeviceDetector;
 
   // Gesture thresholds
   private readonly TAP_THRESHOLD_MS = 300;
@@ -85,6 +88,7 @@ export class TouchManager {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
+    this.deviceDetector = new DeviceDetector();
 
     // Bind event handlers
     this.boundTouchStart = this.handleTouchStart.bind(this);
@@ -118,7 +122,9 @@ export class TouchManager {
    * Handle touchstart event
    */
   private handleTouchStart(e: TouchEvent): void {
-    e.preventDefault();
+    if (this.shouldPreventDefault()) {
+      e.preventDefault();
+    }
 
     const rect = this.canvas.getBoundingClientRect();
 
@@ -147,7 +153,9 @@ export class TouchManager {
    * Handle touchmove event
    */
   private handleTouchMove(e: TouchEvent): void {
-    e.preventDefault();
+    if (this.shouldPreventDefault()) {
+      e.preventDefault();
+    }
 
     if (e.touches.length === 0) return;
 
@@ -221,7 +229,9 @@ export class TouchManager {
    * Handle touchend event
    */
   private handleTouchEnd(e: TouchEvent): void {
-    e.preventDefault();
+    if (this.shouldPreventDefault()) {
+      e.preventDefault();
+    }
 
     for (let i = 0; i < e.changedTouches.length; i++) {
       const touch = e.changedTouches[i];
@@ -255,13 +265,36 @@ export class TouchManager {
    * Handle touchcancel event
    */
   private handleTouchCancel(e: TouchEvent): void {
-    e.preventDefault();
+    if (this.shouldPreventDefault()) {
+      e.preventDefault();
+    }
 
     for (let i = 0; i < e.changedTouches.length; i++) {
       const touch = e.changedTouches[i];
       this.cancelLongPressTimer(touch.identifier);
       this.activeTouches.delete(touch.identifier);
     }
+  }
+
+  /**
+   * Determine if we should prevent default touch behavior
+   * Only prevent on actual mobile/tablet devices to avoid blocking mouse events on desktop
+   */
+  private shouldPreventDefault(): boolean {
+    // Check URL parameter override
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+
+    if (mode === 'desktop') {
+      return false; // Never prevent on desktop mode
+    }
+
+    if (mode === 'mobile') {
+      return true; // Always prevent on mobile mode
+    }
+
+    // Auto-detect: only prevent on mobile/tablet devices
+    return this.deviceDetector.isMobile() || this.deviceDetector.isTablet();
   }
 
   /**

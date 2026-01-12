@@ -14,12 +14,18 @@ export class CameraController {
   private arrowKeyRotationSpeed: number = 0.05; // Rotation speed for arrow keys
   private pressedKeys: Set<string> = new Set();
 
+  // FOV-based zoom settings
+  private readonly defaultFov: number = 60;
+  private readonly minFov: number = 30; // Zoomed in (narrow view)
+  private readonly maxFov: number = 90; // Zoomed out (wide view)
+  private currentFov: number = 60;
+
   // Touch support
   private touchManager?: TouchManager;
   private deviceDetector: DeviceDetector;
 
   constructor(canvas: HTMLElement, aspect: number) {
-    this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
+    this.camera = new THREE.PerspectiveCamera(this.defaultFov, aspect, 0.1, 1000);
 
     // Initial camera position - at terrain surface level (sea level = 32)
     this.position = new THREE.Vector3(0, 40, 0);
@@ -35,8 +41,25 @@ export class CameraController {
   }
 
   private setupControls(canvas: HTMLElement): void {
-    // Setup touch controls if device supports touch
-    if (this.deviceDetector.hasTouchSupport()) {
+    // Check URL parameter override
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceMode = urlParams.get('mode');
+
+    // Setup touch controls only on actual mobile/tablet devices
+    // or when explicitly requested via URL parameter
+    let shouldSetupTouch = false;
+
+    if (forceMode === 'mobile') {
+      shouldSetupTouch = true;
+    } else if (forceMode === 'desktop') {
+      shouldSetupTouch = false;
+    } else {
+      // Auto-detect: only enable touch on mobile/tablet
+      // Don't rely on hasTouchSupport() alone as many desktops report touch API support
+      shouldSetupTouch = this.deviceDetector.isMobile() || this.deviceDetector.isTablet();
+    }
+
+    if (shouldSetupTouch) {
       this.setupTouchControls(canvas as HTMLCanvasElement);
     }
 
@@ -94,8 +117,14 @@ export class CameraController {
       e.preventDefault();
     });
 
-    // Wheel zoom disabled - movement is now handled by Player system
-    // Use WASD keys for movement instead
+    // Wheel zoom - using FOV adjustment for FPS-style camera
+    canvas.addEventListener('wheel', (e: WheelEvent) => {
+      e.preventDefault();
+      // deltaY > 0 = scroll down = zoom out (increase FOV)
+      // deltaY < 0 = scroll up = zoom in (decrease FOV)
+      const zoomDelta = e.deltaY * 0.05;
+      this.zoomCamera(zoomDelta);
+    }, { passive: false });
 
     // Keyboard controls - attach to both window and canvas
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -159,9 +188,12 @@ export class CameraController {
       }
     });
 
-    // Pinch → Zoom camera (placeholder - zoom disabled for FPS-style camera)
-    this.touchManager.onPinch(() => {
-      // Zoom disabled - movement is handled by Player system
+    // Pinch → Zoom camera using FOV adjustment
+    this.touchManager.onPinch((event) => {
+      // deltaScale > 1 = pinch out = zoom in (decrease FOV)
+      // deltaScale < 1 = pinch in = zoom out (increase FOV)
+      const zoomDelta = -(event.deltaScale - 1) * 50; // Invert and scale for FOV adjustment
+      this.zoomCamera(zoomDelta);
     });
 
     // Long press → Reset view
@@ -275,8 +307,19 @@ export class CameraController {
     this.rotate(deltaX * sensitivity, deltaY * sensitivity);
   }
 
-  public zoomCamera(_delta: number): void {
-    // Zoom disabled - movement is handled by Player system
+  public zoomCamera(delta: number): void {
+    // Adjust FOV for zoom effect (FOV-based zoom for FPS camera)
+    // Positive delta = increase FOV = zoom out
+    // Negative delta = decrease FOV = zoom in
+    this.currentFov += delta;
+    this.currentFov = THREE.MathUtils.clamp(
+      this.currentFov,
+      this.minFov,
+      this.maxFov
+    );
+
+    this.camera.fov = this.currentFov;
+    this.camera.updateProjectionMatrix();
   }
 
   public panCamera(deltaX: number, deltaY: number): void {

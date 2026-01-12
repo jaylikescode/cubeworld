@@ -535,7 +535,16 @@ describe('TouchManager', () => {
       expect(callback).toHaveBeenCalledTimes(10);
     });
 
-    it('should prevent default on touch events', () => {
+    it('should prevent default on touch events when in mobile mode', () => {
+      // Mock URL parameter to force mobile mode
+      const originalLocation = window.location;
+      delete (window as any).location;
+      window.location = { ...originalLocation, search: '?mode=mobile' } as Location;
+
+      // Create new TouchManager with mobile mode
+      touchManager.destroy();
+      touchManager = new TouchManager(canvas);
+
       const touchStart = new TouchEvent('touchstart', {
         touches: [
           { identifier: 0, clientX: 100, clientY: 200, pageX: 100, pageY: 200 } as Touch,
@@ -547,6 +556,9 @@ describe('TouchManager', () => {
       canvas.dispatchEvent(touchStart);
 
       expect(preventDefaultSpy).toHaveBeenCalled();
+
+      // Restore original location
+      window.location = originalLocation;
     });
 
     it('should handle touch events with no touches gracefully', () => {
