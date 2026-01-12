@@ -17,10 +17,12 @@
  */
 
 import type { SerializedWorld } from '../types/SerializationTypes';
+import type { RenderMode } from './ModeManager';
 
 export class LocalStorageManager {
   /** localStorage key name */
   private static readonly STORAGE_KEY = 'cubeworld_save';
+  private static readonly MODE_PREFERENCE_KEY = 'cubeworld_mode_preference';
 
   /**
    * Save world data to localStorage
@@ -113,6 +115,53 @@ export class LocalStorageManager {
       return new Blob([jsonString]).size;
     } catch {
       return 0;
+    }
+  }
+
+  /**
+   * Save mode preference to localStorage
+   *
+   * @param mode - Render mode to save ('desktop' or 'mobile')
+   * @returns Success status (true: success, false: failure)
+   */
+  saveModePreference(mode: RenderMode): boolean {
+    try {
+      localStorage.setItem(LocalStorageManager.MODE_PREFERENCE_KEY, mode);
+      return true;
+    } catch (error) {
+      console.error('Failed to save mode preference:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Load mode preference from localStorage
+   *
+   * @returns Saved render mode, or null if not found or invalid
+   */
+  loadModePreference(): RenderMode | null {
+    try {
+      const mode = localStorage.getItem(LocalStorageManager.MODE_PREFERENCE_KEY);
+
+      if (mode === 'desktop' || mode === 'mobile') {
+        return mode;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Failed to load mode preference:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Delete mode preference from localStorage
+   */
+  clearModePreference(): void {
+    try {
+      localStorage.removeItem(LocalStorageManager.MODE_PREFERENCE_KEY);
+    } catch (error) {
+      console.error('Failed to clear mode preference:', error);
     }
   }
 }

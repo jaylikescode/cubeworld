@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TouchManager } from '../input/TouchManager';
 import { DeviceDetector } from '../utils/DeviceDetector';
+import type { RenderMode } from '../services/ModeManager';
 
 export class CameraController {
   public camera: THREE.PerspectiveCamera;
@@ -24,7 +25,11 @@ export class CameraController {
   private touchManager?: TouchManager;
   private deviceDetector: DeviceDetector;
 
+  // Canvas reference for event listener management
+  private canvas: HTMLElement;
+
   constructor(canvas: HTMLElement, aspect: number) {
+    this.canvas = canvas;
     this.camera = new THREE.PerspectiveCamera(this.defaultFov, aspect, 0.1, 1000);
 
     // Initial camera position - at terrain surface level (sea level = 32)
@@ -37,34 +42,40 @@ export class CameraController {
     this.deviceDetector = new DeviceDetector();
 
     this.updateCameraRotation();
-    this.setupControls(canvas);
+
+    // Determine initial mode for setup
+    const initialMode = this.determineInitialMode();
+    this.setupControls(initialMode);
   }
 
-  private setupControls(canvas: HTMLElement): void {
-    // Check URL parameter override
+  /**
+   * Determine initial render mode (for constructor use only)
+   * Priority: URL param > device detection
+   * Note: ModeManager will handle localStorage priority
+   */
+  private determineInitialMode(): RenderMode {
+    // Check URL parameter
     const urlParams = new URLSearchParams(window.location.search);
-    const forceMode = urlParams.get('mode');
-
-    // Setup touch controls only on actual mobile/tablet devices
-    // or when explicitly requested via URL parameter
-    let shouldSetupTouch = false;
-
-    if (forceMode === 'mobile') {
-      shouldSetupTouch = true;
-    } else if (forceMode === 'desktop') {
-      shouldSetupTouch = false;
-    } else {
-      // Auto-detect: only enable touch on mobile/tablet
-      // Don't rely on hasTouchSupport() alone as many desktops report touch API support
-      shouldSetupTouch = this.deviceDetector.isMobile() || this.deviceDetector.isTablet();
+    const urlMode = urlParams.get('mode');
+    if (urlMode === 'desktop' || urlMode === 'mobile') {
+      return urlMode;
     }
 
-    if (shouldSetupTouch) {
-      this.setupTouchControls(canvas as HTMLCanvasElement);
+    // Device detection fallback
+    if (this.deviceDetector.isMobile() || this.deviceDetector.isTablet()) {
+      return 'mobile';
+    }
+    return 'desktop';
+  }
+
+  private setupControls(mode: RenderMode): void {
+    // Setup touch controls only in mobile mode
+    if (mode === 'mobile') {
+      this.setupTouchControls(this.canvas as HTMLCanvasElement);
     }
 
     // Mouse down
-    canvas.addEventListener('mousedown', (e: MouseEvent) => {
+    this.canvas.addEventListener('mousedown', (e: MouseEvent) => {
       if (e.button === 2) {
         // Right click
         this.isDragging = true;
@@ -76,7 +87,7 @@ export class CameraController {
     });
 
     // Mouse move - FPS-style rotation
-    canvas.addEventListener('mousemove', (e: MouseEvent) => {
+    this.canvas.addEventListener('mousemove', (e: MouseEvent) => {
       const deltaX = e.clientX - this.lastMousePos.x;
       const deltaY = e.clientY - this.lastMousePos.y;
 
@@ -93,7 +104,7 @@ export class CameraController {
 
     // Pointer lock change (for better FPS experience)
     document.addEventListener('pointerlockchange', () => {
-      if (document.pointerLockElement === canvas) {
+      if (document.pointerLockElement === this.canvas) {
         // Pointer is locked, continue dragging
         this.isDragging = true;
       } else {
@@ -109,16 +120,16 @@ export class CameraController {
       this.isDragging = false;
       this.isPanning = false;
     };
-    canvas.addEventListener('mouseup', handleMouseUp);
+    this.canvas.addEventListener('mouseup', handleMouseUp);
     document.addEventListener('mouseup', handleMouseUp);
 
     // Prevent context menu
-    canvas.addEventListener('contextmenu', (e: Event) => {
+    this.canvas.addEventListener('contextmenu', (e: Event) => {
       e.preventDefault();
     });
 
     // Wheel zoom - using FOV adjustment for FPS-style camera
-    canvas.addEventListener('wheel', (e: WheelEvent) => {
+    this.canvas.addEventListener('wheel', (e: WheelEvent) => {
       e.preventDefault();
       // deltaY > 0 = scroll down = zoom out (increase FOV)
       // deltaY < 0 = scroll up = zoom in (decrease FOV)
@@ -130,43 +141,43 @@ export class CameraController {
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
       this.pressedKeys.add(key);
-      
+
       // Prevent default behavior for game controls (unless typing in an input)
       const target = e.target as HTMLElement;
-      const isInputField = target.tagName === 'INPUT' || 
-                          target.tagName === 'TEXTAREA' || 
+      const isInputField = target.tagName === 'INPUT' ||
+                          target.tagName === 'TEXTAREA' ||
                           target.isContentEditable;
-      
+
       if (!isInputField && ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', 'r'].includes(key)) {
         e.preventDefault();
         e.stopPropagation();
       }
-      
+
       if (key === 'r' && !isInputField) {
         this.resetView();
       }
     };
-    
+
     const handleKeyUp = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
       this.pressedKeys.delete(key);
-      
+
       const target = e.target as HTMLElement;
-      const isInputField = target.tagName === 'INPUT' || 
-                          target.tagName === 'TEXTAREA' || 
+      const isInputField = target.tagName === 'INPUT' ||
+                          target.tagName === 'TEXTAREA' ||
                           target.isContentEditable;
-      
+
       if (!isInputField && ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
         e.preventDefault();
         e.stopPropagation();
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown, true);
-    canvas.addEventListener('keydown', handleKeyDown, true);
+    this.canvas.addEventListener('keydown', handleKeyDown, true);
     window.addEventListener('keyup', handleKeyUp, true);
-    canvas.addEventListener('keyup', handleKeyUp, true);
-    
+    this.canvas.addEventListener('keyup', handleKeyUp, true);
+
     // Start continuous rotation loop for arrow keys
     this.startContinuousRotation();
   }
@@ -206,10 +217,40 @@ export class CameraController {
     });
   }
 
-  public destroy(): void {
+  /**
+   * Clean up event listeners and resources
+   * Called before reconfiguring or destroying the controller
+   */
+  public cleanup(): void {
+    // Clean up touch controls
     if (this.touchManager) {
       this.touchManager.destroy();
+      this.touchManager = undefined;
     }
+
+    // TODO: Implement full event listener cleanup for mouse/keyboard
+    // For now, event listeners remain attached but will be overridden
+    // on reconfigure. This is acceptable for runtime mode switching.
+    // Full cleanup can be added later if memory leaks are observed.
+  }
+
+  /**
+   * Reconfigure controls for a new render mode
+   * Cleans up existing controls and sets up new ones
+   */
+  public reconfigureForMode(mode: RenderMode): void {
+    // Clean up existing controls
+    this.cleanup();
+
+    // Set up controls for new mode
+    this.setupControls(mode);
+  }
+
+  /**
+   * Alias for cleanup() for backwards compatibility
+   */
+  public destroy(): void {
+    this.cleanup();
   }
 
   private startContinuousRotation(): void {

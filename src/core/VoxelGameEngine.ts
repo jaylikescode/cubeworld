@@ -242,6 +242,10 @@ export class VoxelGameEngine {
     return this.voxelWorld;
   }
 
+  public getCameraController(): CameraController {
+    return this.cameraController;
+  }
+
   public onGameStateChange(callback: (state: VoxelGameState) => void): void {
     this.onStateChange = callback;
   }

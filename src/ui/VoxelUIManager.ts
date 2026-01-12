@@ -7,8 +7,10 @@ import { MobileBottomNav } from './MobileBottomNav';
 import { MobileBlockSheet } from './MobileBlockSheet';
 import { MobileDrawer } from './MobileDrawer';
 import { MobileInfoBar } from './MobileInfoBar';
+import { ModeSelector } from './ModeSelector';
 import { WorldSerializer } from '../services/WorldSerializer';
 import { LocalStorageManager } from '../services/LocalStorageManager';
+import { ModeManager, type RenderMode } from '../services/ModeManager';
 
 /**
  * Block icon mapping for UI display
@@ -125,8 +127,10 @@ export class VoxelUIManager {
   private mobileBlockSheet?: MobileBlockSheet;
   private mobileDrawer?: MobileDrawer;
   private mobileInfoBar?: MobileInfoBar;
+  private modeSelector?: ModeSelector;
   private serializer: WorldSerializer;
   private storage: LocalStorageManager;
+  private modeManager: ModeManager;
 
   constructor(gameEngine: VoxelGameEngine) {
     this.gameEngine = gameEngine;
@@ -134,6 +138,9 @@ export class VoxelUIManager {
     this.deviceDetector = new DeviceDetector();
     this.serializer = new WorldSerializer();
     this.storage = new LocalStorageManager();
+
+    // Initialize ModeManager
+    this.modeManager = new ModeManager(this.deviceDetector, this.storage);
 
     this.loadingElement = document.getElementById('loading')!;
     this.hideLoading();
@@ -149,25 +156,19 @@ export class VoxelUIManager {
     this.categoryManager.onCategoryChange(() => {
       this.renderBlockGrid();
     });
+
+    // Listen for mode changes
+    this.modeManager.onModeChange((newMode) => {
+      this.handleModeSwitch(newMode);
+    });
   }
 
   /**
-   * Detect if we should render mobile UI
-   * Checks URL parameter first, then device detection
+   * Check if we should render mobile UI
+   * Now delegates to ModeManager for consistent mode determination
    */
   private isMobileMode(): boolean {
-    const urlParams = new URLSearchParams(window.location.search);
-
-    // URL parameter override
-    if (urlParams.has('mode')) {
-      const mode = urlParams.get('mode');
-      if (mode === 'mobile') return true;
-      if (mode === 'desktop') return false;
-      // Invalid mode parameter - fall through to device detection
-    }
-
-    // Device detection
-    return this.deviceDetector.isMobile() || this.deviceDetector.isTablet();
+    return this.modeManager.getCurrentMode() === 'mobile';
   }
 
   private initializeUI(): void {
@@ -175,6 +176,23 @@ export class VoxelUIManager {
       this.renderMobileUI();
     } else {
       this.renderDesktopUI();
+    }
+
+    // Create and mount ModeSelector in info panel
+    this.initializeModeSelector();
+  }
+
+  /**
+   * Initialize and mount the ModeSelector component
+   */
+  private initializeModeSelector(): void {
+    const infoPanel = document.getElementById('info-panel');
+    if (infoPanel) {
+      this.modeSelector = new ModeSelector(
+        infoPanel,
+        this.modeManager,
+        this.deviceDetector
+      );
     }
   }
 
@@ -316,6 +334,109 @@ export class VoxelUIManager {
 
     // Trigger canvas resize to adjust aspect ratio
     this.gameEngine.handleResize();
+  }
+
+  /**
+   * Handle mode switching between desktop and mobile
+   * This orchestrates the transition to ensure clean state management
+   */
+  private handleModeSwitch(newMode: RenderMode): void {
+    console.log(`🔄 Switching to ${newMode} mode`);
+
+    // 1. Preserve current game state
+    const gameState = this.gameEngine.getGameState();
+
+    // 2. Cleanup current UI
+    if (newMode === 'mobile') {
+      this.cleanupDesktopUI();
+    } else {
+      this.cleanupMobileUI();
+    }
+
+    // 3. Reconfigure CameraController for new mode
+    const cameraController = this.gameEngine.getCameraController();
+    cameraController.reconfigureForMode(newMode);
+
+    // 4. Render new UI
+    if (newMode === 'mobile') {
+      this.renderMobileUI();
+    } else {
+      this.renderDesktopUI();
+    }
+
+    // 5. Restore game state
+    this.gameEngine.setTool(gameState.currentTool);
+    this.gameEngine.setBlock(gameState.currentBlock);
+
+    // 6. Update ModeSelector display
+    if (this.modeSelector) {
+      this.modeSelector.updateDisplay(this.modeManager.getState());
+    }
+
+    // 7. Update UI with current state
+    this.updateUI(gameState);
+
+    console.log(`✅ Successfully switched to ${newMode} mode`);
+  }
+
+  /**
+   * Cleanup desktop UI elements
+   */
+  private cleanupDesktopUI(): void {
+    const toolbar = document.getElementById('toolbar');
+    if (toolbar) {
+      toolbar.classList.add('hidden');
+    }
+
+    const controlsHelp = document.getElementById('controls-help');
+    if (controlsHelp) {
+      controlsHelp.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Cleanup mobile UI components
+   * Properly destroys all mobile UI instances to prevent memory leaks
+   */
+  private cleanupMobileUI(): void {
+    // Destroy mobile UI components
+    if (this.mobileBottomNav) {
+      this.mobileBottomNav.destroy();
+      this.mobileBottomNav = undefined;
+    }
+
+    if (this.mobileBlockSheet) {
+      this.mobileBlockSheet.destroy();
+      this.mobileBlockSheet = undefined;
+    }
+
+    if (this.mobileDrawer) {
+      this.mobileDrawer.destroy();
+      this.mobileDrawer = undefined;
+    }
+
+    if (this.mobileInfoBar) {
+      this.mobileInfoBar.destroy();
+      this.mobileInfoBar = undefined;
+    }
+
+    // Clean up orientation manager
+    if (this.orientationManager) {
+      // OrientationManager doesn't have destroy method yet, just unset
+      this.orientationManager = undefined;
+    }
+
+    // Show desktop UI elements
+    const toolbar = document.getElementById('toolbar');
+    if (toolbar) {
+      toolbar.classList.remove('hidden');
+      toolbar.classList.remove('mobile-mode');
+    }
+
+    const controlsHelp = document.getElementById('controls-help');
+    if (controlsHelp) {
+      controlsHelp.classList.remove('hidden');
+    }
   }
 
   private hideLoading(): void {
