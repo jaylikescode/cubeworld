@@ -538,7 +538,7 @@ describe('TouchManager', () => {
     it('should prevent default on touch events when in mobile mode', () => {
       // Mock URL parameter to force mobile mode
       const originalLocation = window.location;
-      delete (window as any).location;
+      delete (window as unknown as { location: Location }).location;
       window.location = { ...originalLocation, search: '?mode=mobile' } as Location;
 
       // Create new TouchManager with mobile mode
